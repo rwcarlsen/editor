@@ -56,31 +56,20 @@ type Screen struct {
 	Content   [][]rune
 	lineMap   [][]int // [screenY][screenx]line#
 	charMap   [][]int // [screenY][screenX]char#
-	CursorX   int     // local to screen accounting for linenums
-	CursorY   int     // local to screen
+	CursorX   int     // cursor line#
+	CursorY   int     // cursor char#
 }
 
-func (s *Screen) ShiftCursor(dx, dy int) {
-	l, c := s.locCursor()
+func (s *Screen) MovCursorX(n int) {
+	line := s.Content[s.CursorY]
+	s.CursorX = min(s.CursorX + n, len(line))
+	s.CursorX = max(s.CursorX, 0)
+}
 
-	s.CursorX += dx
-	if s.CursorX > c{
-	} else if s.CursorX > s.W {
-		s.CursorX = s.W
-	} else if s.CursorX < 0 {
-		s.CursorX = 0
-	} else if
-
-	s.CursorY += dy
-	if s.CursorY > s.H {
-		s.CursorY = s.H
-	} else if s.CursorY < 0 {
-		s.CursorY = 0
-	}
-
-	if s.CursorY > s.H {
-		s.LineShift++
-	}
+func (s *Screen) MovCursorY(n int) {
+	s.CursorY = min(s.CursorY + n, len(s.Content))
+	s.CursorY = max(s.CursorY, 0)
+	s.MoveCursorX(0)
 }
 
 // loc gives the line and char coordinates of the x and y (absolute) screen
@@ -89,14 +78,9 @@ func (s *Screen) loc(x, y int) (line, char int) {
 	return s.lineMap[y][x], s.charMap[y][x]
 }
 
-func (s *Screen) locCursor() (line, char int) {
-	ndigits := len(fmt.Sprint(len(s.Content))) + 1
-	return s.loc(s.CursorX + s.X + ndigits, s.CursorY + s.Y)
-}
-
 func (s *Screen) Insert(ch rune) {
-	ndigits := len(fmt.Sprint(len(s.Content))) + 1
-	l, c := s.locCursor()
+	s.loc(s.CursorX, s.CursorY+1)
+	l, c := s.CursorY, s.CursorX
 	line := s.Content[l]
 
 	if ch == '\n' {
@@ -105,15 +89,10 @@ func (s *Screen) Insert(ch rune) {
 		s.Content[l] = head
 		s.Content = append(s.Content[:l+1], append([][]rune{tail}, s.Content[l+1:]...)...)
 		s.CursorY++
-		s.CursorX = ndigits + s.X
+		s.CursorX = 0
 	} else {
 		s.Content[l] = append(line[:c], append([]rune{ch}, line[c:]...)...)
-		if s.CursorX < s.X+s.W { // not wrapped
-			s.CursorX++
-		} else { // need to wrap
-			s.CursorX = ndigits + s.X
-			s.CursorY++
-		}
+		s.CursorX++
 	}
 
 	if s.CursorY > s.H {
