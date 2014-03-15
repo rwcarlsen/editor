@@ -49,43 +49,37 @@ func main() {
 }
 
 type Screen struct {
-	lineshift int     // which line is the first we draw
+	LineShift int // which line is the first we draw
+	LineNums  bool
+	W, H      int
+	X, Y      int // upper corner of screen
+	Content   [][]rune
 	lineMap   [][]int // [screenY][screenx]line#
 	charMap   [][]int // [screenY][screenX]char#
-	LineNums  bool
-}
-
-func (s *Screen) Scroll(n int, lines []string) {
-	_, h := termbox.Size()
-	s.lineshift += n
-	if s.lineshift < 0 {
-		s.lineshift = 0
-	} else if s.lineshift > len(lines)-h {
-		s.lineshift = len(lines) - h
-	}
 }
 
 func (s *Screen) Loc(x, y int) (line, char int) {
-	return s.lineMap[y][x], s.charMap[y][x]
+	return s.lineMap[y-s.Y][x-s.X], s.charMap[y-s.Y][x-s.X]
 }
 
-func (s *Screen) Draw(xpos, ypos int, lines [][]rune) {
+func (s *Screen) Draw() {
 	s.clear()
-	defer termbox.Flush()
 
-	ndigits := len(fmt.Sprint(len(lines))) + 1
+	ndigits := len(fmt.Sprint(len(s.Content))) + 1
+
+	xpos, ypos := s.X, s.Y
 	if s.LineNums {
 		xpos += ndigits
 	}
 
-	w, h := termbox.Size()
-	x, y := 0, s.lineshift // char#, line#
-	for i := ypos; i < h; i++ {
-		if y >= len(lines) {
+	x, y := 0, s.LineShift // char#, line#
+	wrapCount := 0
+	for i := ypos; i < s.H; i++ {
+		if y >= len(s.Content) {
 			break
 		}
-		line := lines[y]
-		for j := xpos; j < w; j++ {
+		line := s.Content[y]
+		for j := xpos; j < s.W; j++ {
 			if x >= len(line) {
 				termbox.SetCell(j, i, ' ', 0, 0)
 			} else {
@@ -97,29 +91,31 @@ func (s *Screen) Draw(xpos, ypos int, lines [][]rune) {
 
 		}
 
-		if s.LineNums {
+		if s.LineNums && wrapCount == 0{
 			nums := fmt.Sprint(y + 1)
-			nums = strings.Repeat(" ", ndigits - 1 - len(nums)) + nums + " "
+			nums = strings.Repeat(" ", ndigits-1-len(nums)) + nums + " "
 			for n := 0; n < ndigits; n++ {
-				termbox.SetCell(xpos - ndigits + n, i, rune(nums[n]), 0, 0)
+				termbox.SetCell(s.X+n, i-wrapCount, rune(nums[n]), 0, 0)
 			}
 		}
+
 
 		if x >= len(line) { // if we drew entire line
 			y++   // go to next line
 			x = 0 // at first char
+			wrapCount = 0
+		} else {
+			wrapCount++
 		}
 	}
 }
 
 func (s *Screen) clear() {
-	w, y := termbox.Size()
-
-	s.lineMap = make([][]int, y)
-	s.charMap = make([][]int, y)
+	s.lineMap = make([][]int, s.H)
+	s.charMap = make([][]int, s.H)
 	for i := range s.lineMap {
-		s.lineMap[i] = make([]int, w)
-		s.charMap[i] = make([]int, w)
+		s.lineMap[i] = make([]int, s.W)
+		s.charMap[i] = make([]int, s.W)
 		for j := range s.lineMap[i] {
 			s.lineMap[i][j] = -1
 			s.charMap[i][j] = -1
@@ -151,21 +147,35 @@ func NewSession(fname string) (*Session, error) {
 	for i, l := range slines {
 		lines[i] = []rune(l)
 	}
-	return &Session{File: fname, Lines: lines, scr: &Screen{LineNums: true}}, nil
+
+	// initialize and draw start screen
+	w, h := termbox.Size()
+	scr := &Screen{
+		LineNums: true,
+		W: w,
+		H: h,
+		Content: lines,
+	}
+
+	return &Session{File: fname, Lines: lines, scr: scr}, nil
 }
 
 func (s *Session) Run() error {
-	s.scr.Draw(10, 20, s.Lines)
-
 	for {
+		termbox.Clear(0, 0)
+		s.scr.Draw()
+		termbox.Flush()
+
 		ev := termbox.PollEvent()
 		switch ev.Type {
 		case termbox.EventKey:
 			if err := s.HandleKey(ev); err != nil {
 				return err
 			}
+		case termbox.EventResize:
+			s.scr.W, s.scr.H = ev.Width, ev.Height
+			s.scr.Draw()
 		}
-		termbox.Flush()
 	}
 }
 
@@ -181,4 +191,3 @@ func (s *Session) HandleKey(ev termbox.Event) error {
 	}
 	return nil
 }
-
