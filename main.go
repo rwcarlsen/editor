@@ -56,22 +56,84 @@ type Screen struct {
 	Content   [][]rune
 	lineMap   [][]int // [screenY][screenx]line#
 	charMap   [][]int // [screenY][screenX]char#
+	CursorX   int     // local to screen accounting for linenums
+	CursorY   int     // local to screen
 }
 
-func (s *Screen) Loc(x, y int) (line, char int) {
-	return s.lineMap[y-s.Y][x-s.X], s.charMap[y-s.Y][x-s.X]
+func (s *Screen) ShiftCursor(dx, dy int) {
+	l, c := s.locCursor()
+
+	s.CursorX += dx
+	if s.CursorX > c{
+	} else if s.CursorX > s.W {
+		s.CursorX = s.W
+	} else if s.CursorX < 0 {
+		s.CursorX = 0
+	} else if
+
+	s.CursorY += dy
+	if s.CursorY > s.H {
+		s.CursorY = s.H
+	} else if s.CursorY < 0 {
+		s.CursorY = 0
+	}
+
+	if s.CursorY > s.H {
+		s.LineShift++
+	}
+}
+
+// loc gives the line and char coordinates of the x and y (absolute) screen
+// coordinates
+func (s *Screen) loc(x, y int) (line, char int) {
+	return s.lineMap[y][x], s.charMap[y][x]
+}
+
+func (s *Screen) locCursor() (line, char int) {
+	ndigits := len(fmt.Sprint(len(s.Content))) + 1
+	return s.loc(s.CursorX + s.X + ndigits, s.CursorY + s.Y)
+}
+
+func (s *Screen) Insert(ch rune) {
+	ndigits := len(fmt.Sprint(len(s.Content))) + 1
+	l, c := s.locCursor()
+	line := s.Content[l]
+
+	if ch == '\n' {
+		head := line[:c]
+		tail := append([]rune{'\n'}, line[c:]...)
+		s.Content[l] = head
+		s.Content = append(s.Content[:l+1], append([][]rune{tail}, s.Content[l+1:]...)...)
+		s.CursorY++
+		s.CursorX = ndigits + s.X
+	} else {
+		s.Content[l] = append(line[:c], append([]rune{ch}, line[c:]...)...)
+		if s.CursorX < s.X+s.W { // not wrapped
+			s.CursorX++
+		} else { // need to wrap
+			s.CursorX = ndigits + s.X
+			s.CursorY++
+		}
+	}
+
+	if s.CursorY > s.H {
+		s.LineShift++
+	}
 }
 
 func (s *Screen) Draw() {
 	s.clear()
 
-	ndigits := len(fmt.Sprint(len(s.Content))) + 1
-
 	xpos, ypos := s.X, s.Y
+	ndigits := len(fmt.Sprint(len(s.Content))) + 1
 	if s.LineNums {
 		xpos += ndigits
 	}
 
+	// draw cursor
+	termbox.SetCursor(s.X+s.CursorX+ndigits, s.Y+s.CursorY)
+
+	// draw content
 	x, y := 0, s.LineShift // char#, line#
 	wrapCount := 0
 	for i := ypos; i < s.H; i++ {
@@ -91,14 +153,13 @@ func (s *Screen) Draw() {
 
 		}
 
-		if s.LineNums && wrapCount == 0{
+		if s.LineNums && wrapCount == 0 {
 			nums := fmt.Sprint(y + 1)
 			nums = strings.Repeat(" ", ndigits-1-len(nums)) + nums + " "
 			for n := 0; n < ndigits; n++ {
 				termbox.SetCell(s.X+n, i-wrapCount, rune(nums[n]), 0, 0)
 			}
 		}
-
 
 		if x >= len(line) { // if we drew entire line
 			y++   // go to next line
@@ -124,11 +185,8 @@ func (s *Screen) clear() {
 }
 
 type Session struct {
-	CursorX int
-	CursorY int
-	File    string
-	Lines   [][]rune
-	scr     *Screen
+	File string
+	scr  *Screen
 }
 
 func NewSession(fname string) (*Session, error) {
@@ -152,12 +210,15 @@ func NewSession(fname string) (*Session, error) {
 	w, h := termbox.Size()
 	scr := &Screen{
 		LineNums: true,
-		W: w,
-		H: h,
-		Content: lines,
+		W:        w,
+		H:        h,
+		Content:  lines,
 	}
 
-	return &Session{File: fname, Lines: lines, scr: scr}, nil
+	return &Session{
+		File: fname,
+		scr:  scr,
+	}, nil
 }
 
 func (s *Session) Run() error {
@@ -175,17 +236,32 @@ func (s *Session) Run() error {
 		case termbox.EventResize:
 			s.scr.W, s.scr.H = ev.Width, ev.Height
 			s.scr.Draw()
+		case termbox.EventMouse:
+		case termbox.EventError:
+			return ev.Err
 		}
 	}
 }
 
 func (s *Session) HandleKey(ev termbox.Event) error {
 	if ev.Ch != 0 {
-		termbox.SetCell(s.CursorX, s.CursorY, ev.Ch, 0, 0)
+		s.scr.Insert(ev.Ch)
 		return nil
 	}
 
 	switch ev.Key {
+	case termbox.KeyEnter:
+		s.scr.Insert('\n')
+	case termbox.KeySpace:
+		s.scr.Insert(' ')
+	case termbox.KeyArrowUp:
+		s.scr.ShiftCursor(0, -1)
+	case termbox.KeyArrowDown:
+		s.scr.ShiftCursor(0, 1)
+	case termbox.KeyArrowLeft:
+		s.scr.ShiftCursor(-1, 0)
+	case termbox.KeyArrowRight:
+		s.scr.ShiftCursor(1, 0)
 	case termbox.KeyEsc:
 		return ErrQuit
 	}
