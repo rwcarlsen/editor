@@ -42,20 +42,23 @@ func (c *Canvas) init(w, h int, content [][]rune, startline int) {
 	c.X = PosMap{}
 	c.Y = PosMap{}
 
-	l, c := startline, 0
-	wrapCount := 0
+	l, ch := startline, 0
 	for y := 0; y < h; y++ {
 		var line []rune
-		if l < len(s.Content) {
-			line = s.Content[l]
+		if l < len(content) {
+			line = content[l]
 		}
 		for x := 0; x < w; x++ {
-			if c >= len(line) {
+			if ch >= len(line) {
 				if c.Line[x] == nil {
 					c.Line[x] = map[int]int{}
 					c.Char[x] = map[int]int{}
 				}
-				c.Line[x][y] = -1
+				if l < len(content) {
+					c.Line[x][y] = l
+				} else {
+					c.Line[x][y] = -1
+				}
 				c.Char[x][y] = -1
 				continue
 			}
@@ -64,24 +67,23 @@ func (c *Canvas) init(w, h int, content [][]rune, startline int) {
 				c.X[l] = map[int]int{}
 				c.Y[l] = map[int]int{}
 			}
-			c.X[l][c] = x
-			c.Y[l][c] = y
+			c.X[l][ch] = x
+			c.Y[l][ch] = y
+
+			lg.Printf("x=%v, y=%v, line=%v, char=%v\n", x, y, l, ch)
 
 			if c.Line[x] == nil {
 				c.Line[x] = map[int]int{}
 				c.Char[x] = map[int]int{}
 			}
 			c.Line[x][y] = l
-			c.Char[x][y] = c
-			c++
+			c.Char[x][y] = ch
+			ch++
 		}
 
-		if c >= len(line) { // if we drew entire line
+		if ch >= len(line) { // if we drew entire line
 			l++   // go to next line
-			c = 0 // at first char
-			wrapCount = 0
-		} else {
-			wrapCount++
+			ch = 0 // at first char
 		}
 	}
 }

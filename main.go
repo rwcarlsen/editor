@@ -54,12 +54,8 @@ type Screen struct {
 	W, H      int
 	X, Y      int // upper corner of screen
 	Content   [][]rune
-	lineMap   [][]int // [screenY][screenx]line#
-	charMap   [][]int // [screenY][screenX]char#
-	xMap      map[int]map[int]int // map[line#]map[char#]screenX
-	yMap      map[int]map[int]int // map[line#]map[char#]screenY
-	CursorX   int     // cursor line#
-	CursorY   int     // cursor char#
+	CursorX   int                 // cursor line#
+	CursorY   int                 // cursor char#
 }
 
 func (s *Screen) MovCursorX(n int) {
@@ -69,21 +65,16 @@ func (s *Screen) MovCursorX(n int) {
 }
 
 func (s *Screen) MovCursorY(n int) {
-	if v := s.CursorY + n; v < len(s.Content) && v >= 0 {
-		_, y := s.xMap[s.CursorY][s.CursorX], s.yMap[s.CursorY][s.CursorX]
-		if y == s.H-1 && n > 0 || y == 0 && n < 0 {
-			s.LineShift += n
-			s.LineShift = max(s.LineShift, 0)
-		}
-		s.CursorY += n
+	dy := n
+	if s.CursorY + n > len(s.Content) {
+		dy = len(s.Content) - s.CursorY
+		s.LineShift += dy
+	} else if s.CursorY + n < 0 {
+		dy = s.CursorY
+		s.LineShift += dy
 	}
+	s.CursorY += dy
 	s.MovCursorX(0)
-}
-
-// Loc gives the line and char coordinates of the x and y (absolute) screen
-// coordinates
-func (s *Screen) Loc(x, y int) (line, char int) {
-	return s.lineMap[y][x], s.charMap[y][x]
 }
 
 func (s *Screen) Insert(ch rune) {
@@ -108,75 +99,37 @@ func (s *Screen) Insert(ch rune) {
 }
 
 func (s *Screen) Draw() {
-	s.clear()
+	cv := NewCanvas(s.W, s.H, s.Content, s.LineShift)
 
-	xpos, ypos := s.X, s.Y
-	ndigits := len(fmt.Sprint(len(s.Content))) + 1
+	ndigits := 0
 	if s.LineNums {
-		xpos += ndigits
+		ndigits = len(fmt.Sprint(len(s.Content))) + 1
 	}
 
 	// draw cursor
 	termbox.SetCursor(s.X+s.CursorX+ndigits, s.Y+s.CursorY)
 
 	// draw content
-	x, y := 0, s.LineShift // char#, line#
-	wrapCount := 0
-	for i := ypos; i < s.H; i++ {
-		if y >= len(s.Content) {
-			break
-		}
-		line := s.Content[y]
-		for j := xpos; j < s.W; j++ {
-			if x >= len(line) {
-				termbox.SetCell(j, i, ' ', 0, 0)
-			} else {
-				termbox.SetCell(j, i, line[x], 0, 0)
-				s.lineMap[i][j] = y
-				s.charMap[i][j] = x
-
-				if s.xMap[y] == nil {
-					s.xMap[y] = map[int]int{}
-				}
-				if s.yMap[y] == nil {
-					s.yMap[y] = map[int]int{}
-				}
-				s.xMap[y][x] = j
-				s.yMap[y][x] = i
-				x++
+	prevline := -1
+	for y := 0; y < s.H; y++ {
+		for x := 0; x < s.W; x++ {
+			line, char := cv.DataPos(x, y)
+			if char == -1 {
+				termbox.SetCell(s.X + x + ndigits, s.Y + y, ' ', 0, 0)
+				continue
 			}
-
+			termbox.SetCell(s.X + x + ndigits, s.Y + y, s.Content[line][char], 0, 0)
 		}
 
-		if s.LineNums && wrapCount == 0 {
-			nums := fmt.Sprint(y + 1)
+		// draw line number
+		currline, _ := cv.DataPos(0, y)
+		if s.LineNums && currline != prevline {
+			prevline = currline
+			nums := fmt.Sprint(currline + 1)
 			nums = strings.Repeat(" ", ndigits-1-len(nums)) + nums + " "
 			for n := 0; n < ndigits; n++ {
-				termbox.SetCell(s.X+n, i-wrapCount, rune(nums[n]), 0, 0)
+				termbox.SetCell(s.X+n, currline, rune(nums[n]), 0, 0)
 			}
-		}
-
-		if x >= len(line) { // if we drew entire line
-			y++   // go to next line
-			x = 0 // at first char
-			wrapCount = 0
-		} else {
-			wrapCount++
-		}
-	}
-}
-
-func (s *Screen) clear() {
-	s.xMap = map[int]map[int]int{}
-	s.yMap = map[int]map[int]int{}
-	s.lineMap = make([][]int, s.H)
-	s.charMap = make([][]int, s.H)
-	for i := range s.lineMap {
-		s.lineMap[i] = make([]int, s.W)
-		s.charMap[i] = make([]int, s.W)
-		for j := range s.lineMap[i] {
-			s.lineMap[i][j] = -1
-			s.charMap[i][j] = -1
 		}
 	}
 }
