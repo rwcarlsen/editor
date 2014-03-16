@@ -7,7 +7,6 @@ type Canvas struct {
 	Char map[int]PosMap // map[y]map[x]char#
 	X map[int]PosMap // map[line#]map[char#]x
 	Y map[int]PosMap // map[line#]map[char#]y
-	cont map[int]bool // map[line#]bool
 }
 
 func NewCanvas(w, h int, content [][]rune, startline int) *Canvas {
@@ -20,10 +19,6 @@ func (c *Canvas) DataPos(x, y int) (line, char int) {
 	return c.Line[y], c.Char[y][x]
 }
 
-func (c *Canvas) Contains(line int) bool {
-	return c.cont[line]
-}
-
 func (c *Canvas) RenderPos(line, char int) (x, y int) {
 	return c.X[line][char], c.Y[line][char]
 }
@@ -33,7 +28,6 @@ func (c *Canvas) init(w, h int, content [][]rune, startline int) {
 	c.Char = map[int]PosMap{}
 	c.X = map[int]PosMap{}
 	c.Y = map[int]PosMap{}
-	c.cont = map[int]bool{}
 
 	l, ch := startline, 0
 	for y := 0; y < h; y++ {
@@ -42,7 +36,6 @@ func (c *Canvas) init(w, h int, content [][]rune, startline int) {
 		if l < len(content) {
 			line = content[l]
 			c.Line[y] = l
-			c.cont[l] = true
 		}
 		for x := 0; x < w; x++ {
 			if ch >= len(line) {

@@ -65,28 +65,33 @@ func (s *Screen) MovCursorX(n int) {
 }
 
 func (s *Screen) MovCursorY(n int) {
-	if s.CursorY + n > len(s.Content) {
-		s.CursorY = len(s.Content)
+	if s.CursorY + n >= len(s.Content) {
+		s.CursorY = len(s.Content) - 1
 	} else if s.CursorY + n < 0 {
 		s.CursorY = 0
 	} else {
 		s.CursorY += n
 	}
+
+	// keep x cursor pos on text for new line
 	s.MovCursorX(0)
 
-
-	lineshift := s.LineShift
-	cv := NewCanvas(s.W, s.H, s.Content, lineshift)
-	for !cv.Contains(s.CursorY) {
-		lg.Println("shift1")
-		if n > 0 {
-			lineshift ++
-		} else {
-			lineshift --
-		}
-		cv = NewCanvas(s.W, s.H, s.Content, lineshift)
+	// scroll if needed
+	cv := NewCanvas(s.W - s.ndigits(), s.H, s.Content, s.LineShift)
+	if cv.Line[0] != -1 && s.CursorY - cv.Line[0] < 0 {
+		lg.Printf("scroll up %v\n", s.CursorY - cv.Line[0])
+		s.LineShift += s.CursorY - cv.Line[0]
+	} else if cv.Line[s.H-1] != -1 && s.CursorY - cv.Line[s.H-1] > 0 {
+		lg.Printf("scroll down %v\n", s.CursorY - cv.Line[s.H-1])
+		s.LineShift += s.CursorY - cv.Line[s.H-1]
 	}
-	s.LineShift = lineshift
+}
+
+func (s *Screen) ndigits() int {
+	if s.LineNums {
+		return len(fmt.Sprint(len(s.Content))) + 1
+	}
+	return 0
 }
 
 func (s *Screen) Insert(ch rune) {
@@ -116,36 +121,38 @@ func (s *Screen) Resize(w, h int) {
 }
 
 func (s *Screen) Draw() {
-	cv := NewCanvas(s.W, s.H, s.Content, s.LineShift)
-
-	ndigits := 0
-	if s.LineNums {
-		ndigits = len(fmt.Sprint(len(s.Content))) + 1
-	}
+	cv := NewCanvas(s.W-s.ndigits(), s.H, s.Content, s.LineShift)
 
 	// draw cursor
-	termbox.SetCursor(s.X+s.CursorX+ndigits, s.Y+s.CursorY)
+	termbox.SetCursor(s.X+s.CursorX+s.ndigits(), s.Y+s.CursorY)
 
 	// draw content
-	prevline := -1
 	for y := 0; y < s.H; y++ {
-		for x := 0; x < s.W; x++ {
+		for x := 0; x < s.W-s.ndigits(); x++ {
 			line, char := cv.DataPos(x, y)
-			if char == -1 {
-				termbox.SetCell(s.X + x + ndigits, s.Y + y, ' ', 0, 0)
+			if char != -1 {
+				termbox.SetCell(s.X + x + s.ndigits(), s.Y + y, s.Content[line][char], 0, 0)
+			}
+		}
+	}
+
+	// draw line number
+	if s.LineNums {
+		prev := -1
+		for y := 0; y < s.H; y++ {
+			line, _ := cv.Line[y]
+			lg.Println(line)
+			if line == -1 {
+				break
+			} else if line == prev {
 				continue
 			}
-			termbox.SetCell(s.X + x + ndigits, s.Y + y, s.Content[line][char], 0, 0)
-		}
 
-		// draw line number
-		currline, _ := cv.DataPos(0, y)
-		if s.LineNums && currline != prevline {
-			prevline = currline
-			nums := fmt.Sprint(currline + 1)
-			nums = strings.Repeat(" ", ndigits-1-len(nums)) + nums + " "
-			for n := 0; n < ndigits; n++ {
-				termbox.SetCell(s.X+n, currline, rune(nums[n]), 0, 0)
+			prev = line
+			nums := fmt.Sprint(line + 1)
+			nums = strings.Repeat(" ", s.ndigits()-1-len(nums)) + nums + " "
+			for n := 0; n < s.ndigits(); n++ {
+				termbox.SetCell(s.X+n, line, rune(nums[n]), 0, 0)
 			}
 		}
 	}
