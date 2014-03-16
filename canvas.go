@@ -1,12 +1,13 @@
 package main
 
-type PosMap map[int]map[int]int
+type PosMap map[int]int
 
 type Canvas struct {
-	Line PosMap // map[x]map[y]line#
-	Char PosMap // map[x]map[y]char#
-	X    PosMap // map[line#]map[char#]x
-	Y    PosMap // map[line#]map[char#]y
+	Line PosMap // map[y]line#
+	Char map[int]PosMap // map[y]map[x]char#
+	X map[int]PosMap // map[line#]map[char#]x
+	Y map[int]PosMap // map[line#]map[char#]y
+	cont map[int]bool // map[line#]bool
 }
 
 func NewCanvas(w, h int, content [][]rune, startline int) *Canvas {
@@ -16,20 +17,11 @@ func NewCanvas(w, h int, content [][]rune, startline int) *Canvas {
 }
 
 func (c *Canvas) DataPos(x, y int) (line, char int) {
-	return c.Line[x][y], c.Char[x][y]
+	return c.Line[y], c.Char[y][x]
 }
 
-func (c *Canvas) Contains(line, char int) bool {
-	if c.X[line] == nil {
-		return false
-	} else if _, ok := c.X[line][char]; !ok {
-		return false
-	} else if c.Y[line] == nil {
-		return false
-	} else if _, ok := c.Y[line][char]; !ok {
-		return false
-	}
-	return true
+func (c *Canvas) Contains(line int) bool {
+	return c.cont[line]
 }
 
 func (c *Canvas) RenderPos(line, char int) (x, y int) {
@@ -38,46 +30,40 @@ func (c *Canvas) RenderPos(line, char int) (x, y int) {
 
 func (c *Canvas) init(w, h int, content [][]rune, startline int) {
 	c.Line = PosMap{}
-	c.Char = PosMap{}
-	c.X = PosMap{}
-	c.Y = PosMap{}
+	c.Char = map[int]PosMap{}
+	c.X = map[int]PosMap{}
+	c.Y = map[int]PosMap{}
+	c.cont = map[int]bool{}
 
 	l, ch := startline, 0
 	for y := 0; y < h; y++ {
+		c.Line[y] = -1
 		var line []rune
 		if l < len(content) {
 			line = content[l]
+			c.Line[y] = l
+			c.cont[l] = true
 		}
 		for x := 0; x < w; x++ {
 			if ch >= len(line) {
-				if c.Line[x] == nil {
-					c.Line[x] = map[int]int{}
-					c.Char[x] = map[int]int{}
+				if c.Char[y] == nil {
+					c.Char[y] = PosMap{}
 				}
-				if l < len(content) {
-					c.Line[x][y] = l
-				} else {
-					c.Line[x][y] = -1
-				}
-				c.Char[x][y] = -1
+				c.Char[y][x] = -1
 				continue
 			}
 
 			if c.X[l] == nil {
-				c.X[l] = map[int]int{}
-				c.Y[l] = map[int]int{}
+				c.X[l] = PosMap{}
+				c.Y[l] = PosMap{}
 			}
 			c.X[l][ch] = x
 			c.Y[l][ch] = y
 
-			lg.Printf("x=%v, y=%v, line=%v, char=%v\n", x, y, l, ch)
-
-			if c.Line[x] == nil {
-				c.Line[x] = map[int]int{}
-				c.Char[x] = map[int]int{}
+			if c.Char[y] == nil {
+				c.Char[y] = PosMap{}
 			}
-			c.Line[x][y] = l
-			c.Char[x][y] = ch
+			c.Char[y][x] = ch
 			ch++
 		}
 

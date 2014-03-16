@@ -65,16 +65,28 @@ func (s *Screen) MovCursorX(n int) {
 }
 
 func (s *Screen) MovCursorY(n int) {
-	dy := n
 	if s.CursorY + n > len(s.Content) {
-		dy = len(s.Content) - s.CursorY
-		s.LineShift += dy
+		s.CursorY = len(s.Content)
 	} else if s.CursorY + n < 0 {
-		dy = s.CursorY
-		s.LineShift += dy
+		s.CursorY = 0
+	} else {
+		s.CursorY += n
 	}
-	s.CursorY += dy
 	s.MovCursorX(0)
+
+
+	lineshift := s.LineShift
+	cv := NewCanvas(s.W, s.H, s.Content, lineshift)
+	for !cv.Contains(s.CursorY) {
+		lg.Println("shift1")
+		if n > 0 {
+			lineshift ++
+		} else {
+			lineshift --
+		}
+		cv = NewCanvas(s.W, s.H, s.Content, lineshift)
+	}
+	s.LineShift = lineshift
 }
 
 func (s *Screen) Insert(ch rune) {
@@ -96,6 +108,11 @@ func (s *Screen) Insert(ch rune) {
 	if s.CursorY > s.H {
 		s.LineShift++
 	}
+}
+
+func (s *Screen) Resize(w, h int) {
+	s.W = w
+	s.H = h
 }
 
 func (s *Screen) Draw() {
@@ -184,7 +201,7 @@ func (s *Session) Run() error {
 				return err
 			}
 		case termbox.EventResize:
-			s.scr.W, s.scr.H = ev.Width, ev.Height
+			s.scr.Resize(ev.Width, ev.Height)
 		case termbox.EventMouse:
 		case termbox.EventError:
 			return ev.Err
