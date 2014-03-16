@@ -56,30 +56,37 @@ type Screen struct {
 	Content   [][]rune
 	lineMap   [][]int // [screenY][screenx]line#
 	charMap   [][]int // [screenY][screenX]char#
+	xMap      map[int]map[int]int // map[line#]map[char#]screenX
+	yMap      map[int]map[int]int // map[line#]map[char#]screenY
 	CursorX   int     // cursor line#
 	CursorY   int     // cursor char#
 }
 
 func (s *Screen) MovCursorX(n int) {
 	line := s.Content[s.CursorY]
-	s.CursorX = min(s.CursorX + n, len(line))
+	s.CursorX = min(s.CursorX+n, len(line))
 	s.CursorX = max(s.CursorX, 0)
 }
 
 func (s *Screen) MovCursorY(n int) {
-	s.CursorY = min(s.CursorY + n, len(s.Content))
-	s.CursorY = max(s.CursorY, 0)
-	s.MoveCursorX(0)
+	if v := s.CursorY + n; v < len(s.Content) && v >= 0 {
+		_, y := s.xMap[s.CursorY][s.CursorX], s.yMap[s.CursorY][s.CursorX]
+		if y == s.H-1 && n > 0 || y == 0 && n < 0 {
+			s.LineShift += n
+			s.LineShift = max(s.LineShift, 0)
+		}
+		s.CursorY += n
+	}
+	s.MovCursorX(0)
 }
 
-// loc gives the line and char coordinates of the x and y (absolute) screen
+// Loc gives the line and char coordinates of the x and y (absolute) screen
 // coordinates
-func (s *Screen) loc(x, y int) (line, char int) {
+func (s *Screen) Loc(x, y int) (line, char int) {
 	return s.lineMap[y][x], s.charMap[y][x]
 }
 
 func (s *Screen) Insert(ch rune) {
-	s.loc(s.CursorX, s.CursorY+1)
 	l, c := s.CursorY, s.CursorX
 	line := s.Content[l]
 
@@ -127,6 +134,15 @@ func (s *Screen) Draw() {
 				termbox.SetCell(j, i, line[x], 0, 0)
 				s.lineMap[i][j] = y
 				s.charMap[i][j] = x
+
+				if s.xMap[y] == nil {
+					s.xMap[y] = map[int]int{}
+				}
+				if s.yMap[y] == nil {
+					s.yMap[y] = map[int]int{}
+				}
+				s.xMap[y][x] = j
+				s.yMap[y][x] = i
 				x++
 			}
 
@@ -151,6 +167,8 @@ func (s *Screen) Draw() {
 }
 
 func (s *Screen) clear() {
+	s.xMap = map[int]map[int]int{}
+	s.yMap = map[int]map[int]int{}
 	s.lineMap = make([][]int, s.H)
 	s.charMap = make([][]int, s.H)
 	for i := range s.lineMap {
@@ -214,7 +232,6 @@ func (s *Session) Run() error {
 			}
 		case termbox.EventResize:
 			s.scr.W, s.scr.H = ev.Width, ev.Height
-			s.scr.Draw()
 		case termbox.EventMouse:
 		case termbox.EventError:
 			return ev.Err
@@ -234,15 +251,29 @@ func (s *Session) HandleKey(ev termbox.Event) error {
 	case termbox.KeySpace:
 		s.scr.Insert(' ')
 	case termbox.KeyArrowUp:
-		s.scr.ShiftCursor(0, -1)
+		s.scr.MovCursorY(-1)
 	case termbox.KeyArrowDown:
-		s.scr.ShiftCursor(0, 1)
+		s.scr.MovCursorY(1)
 	case termbox.KeyArrowLeft:
-		s.scr.ShiftCursor(-1, 0)
+		s.scr.MovCursorX(-1)
 	case termbox.KeyArrowRight:
-		s.scr.ShiftCursor(1, 0)
+		s.scr.MovCursorX(1)
 	case termbox.KeyEsc:
 		return ErrQuit
 	}
 	return nil
+}
+
+func min(x, y int) int {
+	if x < y {
+		return x
+	}
+	return y
+}
+
+func max(x, y int) int {
+	if x > y {
+		return x
+	}
+	return y
 }
