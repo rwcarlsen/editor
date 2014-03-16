@@ -31,6 +31,14 @@ func (c *Canvas) init(w, h int, content [][]rune, startline int) {
 
 	l, ch := startline, 0
 	for y := 0; y < h; y++ {
+		if c.X[l] == nil {
+			c.X[l] = PosMap{}
+			c.Y[l] = PosMap{}
+		}
+		if c.Char[y] == nil {
+			c.Char[y] = PosMap{}
+		}
+
 		c.Line[y] = -1
 		var line []rune
 		if l < len(content) {
@@ -38,25 +46,12 @@ func (c *Canvas) init(w, h int, content [][]rune, startline int) {
 			c.Line[y] = l
 		}
 		for x := 0; x < w; x++ {
-			if ch >= len(line) {
-				if c.Char[y] == nil {
-					c.Char[y] = PosMap{}
-				}
-				c.Char[y][x] = -1
-				continue
-			}
-
-			if c.X[l] == nil {
-				c.X[l] = PosMap{}
-				c.Y[l] = PosMap{}
-			}
 			c.X[l][ch] = x
 			c.Y[l][ch] = y
-
-			if c.Char[y] == nil {
-				c.Char[y] = PosMap{}
-			}
 			c.Char[y][x] = ch
+			if ch >= len(line) {
+				c.Char[y][x] = -1
+			}
 			ch++
 		}
 

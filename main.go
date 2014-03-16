@@ -79,10 +79,8 @@ func (s *Screen) MovCursorY(n int) {
 	// scroll if needed
 	cv := NewCanvas(s.W - s.ndigits(), s.H, s.Content, s.LineShift)
 	if cv.Line[0] != -1 && s.CursorY - cv.Line[0] < 0 {
-		lg.Printf("scroll up %v\n", s.CursorY - cv.Line[0])
 		s.LineShift += s.CursorY - cv.Line[0]
 	} else if cv.Line[s.H-1] != -1 && s.CursorY - cv.Line[s.H-1] > 0 {
-		lg.Printf("scroll down %v\n", s.CursorY - cv.Line[s.H-1])
 		s.LineShift += s.CursorY - cv.Line[s.H-1]
 	}
 }
@@ -124,7 +122,8 @@ func (s *Screen) Draw() {
 	cv := NewCanvas(s.W-s.ndigits(), s.H, s.Content, s.LineShift)
 
 	// draw cursor
-	termbox.SetCursor(s.X+s.CursorX+s.ndigits(), s.Y+s.CursorY)
+	x, y := cv.RenderPos(s.CursorY, s.CursorX)
+	termbox.SetCursor(s.X+s.ndigits()+x, s.Y+y)
 
 	// draw content
 	for y := 0; y < s.H; y++ {
@@ -140,7 +139,7 @@ func (s *Screen) Draw() {
 	if s.LineNums {
 		prev := -1
 		for y := 0; y < s.H; y++ {
-			line, _ := cv.Line[y]
+			line := cv.Line[y]
 			lg.Println(line)
 			if line == -1 {
 				break
@@ -152,7 +151,7 @@ func (s *Screen) Draw() {
 			nums := fmt.Sprint(line + 1)
 			nums = strings.Repeat(" ", s.ndigits()-1-len(nums)) + nums + " "
 			for n := 0; n < s.ndigits(); n++ {
-				termbox.SetCell(s.X+n, line, rune(nums[n]), 0, 0)
+				termbox.SetCell(s.X+n, s.Y + y, rune(nums[n]), 0, 0)
 			}
 		}
 	}
