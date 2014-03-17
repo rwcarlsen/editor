@@ -49,7 +49,6 @@ func main() {
 }
 
 type Screen struct {
-	LineShift int // which line is the first we draw
 	LineNums  bool
 	W, H      int
 	X, Y      int // upper corner of screen
@@ -77,14 +76,9 @@ func (s *Screen) MovCursorY(n int) {
 	// keep x cursor pos on text for new line
 	s.MovCursorX(0)
 
-	// scroll if needed
-	cv := NewWrapView(s.W - s.ndigits(), s.H, s.Content, s.LineShift, s.ypivot)
-	if cv.Line(0, 0) != -1 && s.CursorY - cv.Line(0, 0) < 0 {
-		s.ypivot = 0
-		s.LineShift += s.CursorY - cv.Line(0, 0)
-	} else if cv.Line(0, s.H-1) != -1 && s.CursorY - cv.Line(0, s.H-1) > 0 {
-		s.ypivot = s.H-1
-		s.LineShift += s.CursorY - cv.Line(0, s.H-1)
+	cv := NewWrapView(s.W - s.ndigits(), s.H, s.Content, s.CursorY, s.ypivot)
+	if cv.Y(s.CursorY, 0) > 0 && cv.Y(s.CursorY, 0) < s.H-1 {
+		s.ypivot = cv.Y(s.CursorY, s.CursorX)
 	}
 }
 
@@ -110,10 +104,6 @@ func (s *Screen) Insert(ch rune) {
 		s.Content[l] = append(line[:c], append([]rune{ch}, line[c:]...)...)
 		s.CursorX++
 	}
-
-	if s.CursorY > s.H {
-		s.LineShift++
-	}
 }
 
 func (s *Screen) Resize(w, h int) {
@@ -122,7 +112,7 @@ func (s *Screen) Resize(w, h int) {
 }
 
 func (s *Screen) Draw() {
-	cv := NewWrapView(s.W-s.ndigits(), s.H, s.Content, s.LineShift, s.ypivot)
+	cv := NewWrapView(s.W-s.ndigits(), s.H, s.Content, s.CursorY, s.ypivot)
 
 	// draw cursor
 	x, y := RenderPos(cv, s.CursorY, s.CursorX)
