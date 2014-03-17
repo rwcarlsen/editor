@@ -56,6 +56,7 @@ type Screen struct {
 	Content   [][]rune
 	CursorX   int                 // cursor line#
 	CursorY   int                 // cursor char#
+	ypivot int
 }
 
 func (s *Screen) MovCursorX(n int) {
@@ -77,11 +78,13 @@ func (s *Screen) MovCursorY(n int) {
 	s.MovCursorX(0)
 
 	// scroll if needed
-	cv := NewCanvas(s.W - s.ndigits(), s.H, s.Content, s.LineShift)
-	if cv.Line[0] != -1 && s.CursorY - cv.Line[0] < 0 {
-		s.LineShift += s.CursorY - cv.Line[0]
-	} else if cv.Line[s.H-1] != -1 && s.CursorY - cv.Line[s.H-1] > 0 {
-		s.LineShift += s.CursorY - cv.Line[s.H-1]
+	cv := NewWrapView(s.W - s.ndigits(), s.H, s.Content, s.LineShift, s.ypivot)
+	if cv.Line(0, 0) != -1 && s.CursorY - cv.Line(0, 0) < 0 {
+		s.ypivot = 0
+		s.LineShift += s.CursorY - cv.Line(0, 0)
+	} else if cv.Line(0, s.H-1) != -1 && s.CursorY - cv.Line(0, s.H-1) > 0 {
+		s.ypivot = s.H-1
+		s.LineShift += s.CursorY - cv.Line(0, s.H-1)
 	}
 }
 
@@ -119,16 +122,16 @@ func (s *Screen) Resize(w, h int) {
 }
 
 func (s *Screen) Draw() {
-	cv := NewCanvas(s.W-s.ndigits(), s.H, s.Content, s.LineShift)
+	cv := NewWrapView(s.W-s.ndigits(), s.H, s.Content, s.LineShift, s.ypivot)
 
 	// draw cursor
-	x, y := cv.RenderPos(s.CursorY, s.CursorX)
+	x, y := RenderPos(cv, s.CursorY, s.CursorX)
 	termbox.SetCursor(s.X+s.ndigits()+x, s.Y+y)
 
 	// draw content
 	for y := 0; y < s.H; y++ {
 		for x := 0; x < s.W-s.ndigits(); x++ {
-			line, char := cv.DataPos(x, y)
+			line, char := DataPos(cv, x, y)
 			if char != -1 {
 				termbox.SetCell(s.X + x + s.ndigits(), s.Y + y, s.Content[line][char], 0, 0)
 			}
@@ -139,7 +142,7 @@ func (s *Screen) Draw() {
 	if s.LineNums {
 		prev := -1
 		for y := 0; y < s.H; y++ {
-			line := cv.Line[y]
+			line := cv.Line(0, y)
 			lg.Println(line)
 			if line == -1 {
 				break

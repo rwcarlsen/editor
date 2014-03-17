@@ -9,44 +9,54 @@ type View interface {
 
 type PosMap map[int]map[int]int
 
-type WrapCanvas struct {
+type WrapView struct {
 	lines PosMap // map[y]map[x]line#
 	chars PosMap // map[y]map[x]char#
 	xs    PosMap // map[line#]map[char#]x
 	ys    PosMap // map[line#]map[char#]y
 }
 
-func NewWrapCanvas(w, h int, content [][]rune, startl, starty int) *WrapCanvas {
-	c := &WrapCanvas{}
+func RenderPos(v View, line, char int) (x, y int) {
+	return v.X(line, char), v.Y(line, char)
+}
+
+func DataPos(v View, x, y int) (line, char int) {
+	return v.Line(x, y), v.Char(x, y)
+}
+
+func NewWrapView(w, h int, content [][]rune, startl, starty int) *WrapView {
+	c := &WrapView{}
 	c.init(w, h, content, startl, starty)
 	return c
 }
 
-func (c *WrapCanvas) Char(x, y int) int {
+func (c *WrapView) Char(x, y int) int {
 	return c.chars[y][x]
 }
 
-func (c *WrapCanvas) Line(x, y int) int {
+func (c *WrapView) Line(x, y int) int {
 	return c.lines[y][x]
 }
 
-func (c *WrapCanvas) X(line, char int) int {
+func (c *WrapView) X(line, char int) int {
 	return c.xs[line][char]
 }
 
-func (c *WrapCanvas) Y(line, char int) int {
+func (c *WrapView) Y(line, char int) int {
+	return c.ys[line][char]
 }
 
-func (c *WrapCanvas) init(w, h int, content [][]rune, startl, starty int) {
+func (c *WrapView) init(w, h int, content [][]rune, startl, starty int) {
 	c.lines = PosMap{}
 	c.chars = PosMap{}
 	c.xs = PosMap{}
 	c.ys = PosMap{}
 
 	// figure out line+char for top left corner of canvas
-	l, ch := startl-1, 0
+	l, ch := startl, 0
 	y := starty
-	for l >= 0 {
+	for l > 0 {
+		l--
 		line := content[l]
 		dy := len(line) / w + 1
 		if y - dy < 0 && dy == 1 {
@@ -56,7 +66,6 @@ func (c *WrapCanvas) init(w, h int, content [][]rune, startl, starty int) {
 			ch = len(line) % w
 			break
 		}
-		l--
 		y -= dy
 	}
 
