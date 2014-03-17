@@ -1,62 +1,96 @@
 package main
 
-type PosMap map[int]int
-
-type Canvas struct {
-	Line PosMap // map[y]line#
-	Char map[int]PosMap // map[y]map[x]char#
-	X map[int]PosMap // map[line#]map[char#]x
-	Y map[int]PosMap // map[line#]map[char#]y
+type View interface {
+	Line(x, y int) int
+	Char(x, y int) int
+	X(line, char int) int
+	Y(line, char int) int
 }
 
-func NewCanvas(w, h int, content [][]rune, startline int) *Canvas {
-	c := &Canvas{}
-	c.init(w, h, content, startline)
+type PosMap map[int]map[int]int
+
+type WrapCanvas struct {
+	lines PosMap // map[y]map[x]line#
+	chars PosMap // map[y]map[x]char#
+	xs    PosMap // map[line#]map[char#]x
+	ys    PosMap // map[line#]map[char#]y
+}
+
+func NewWrapCanvas(w, h int, content [][]rune, startl, starty int) *WrapCanvas {
+	c := &WrapCanvas{}
+	c.init(w, h, content, startl, starty)
 	return c
 }
 
-func (c *Canvas) DataPos(x, y int) (line, char int) {
-	return c.Line[y], c.Char[y][x]
+func (c *WrapCanvas) Char(x, y int) int {
+	return c.chars[y][x]
 }
 
-func (c *Canvas) RenderPos(line, char int) (x, y int) {
-	return c.X[line][char], c.Y[line][char]
+func (c *WrapCanvas) Line(x, y int) int {
+	return c.lines[y][x]
 }
 
-func (c *Canvas) init(w, h int, content [][]rune, startline int) {
-	c.Line = PosMap{}
-	c.Char = map[int]PosMap{}
-	c.X = map[int]PosMap{}
-	c.Y = map[int]PosMap{}
+func (c *WrapCanvas) X(line, char int) int {
+	return c.xs[line][char]
+}
 
-	l, ch := startline, 0
+func (c *WrapCanvas) Y(line, char int) int {
+}
+
+func (c *WrapCanvas) init(w, h int, content [][]rune, startl, starty int) {
+	c.lines = PosMap{}
+	c.chars = PosMap{}
+	c.xs = PosMap{}
+	c.ys = PosMap{}
+
+	// figure out line+char for top left corner of canvas
+	l, ch := startl-1, 0
+	y := starty
+	for l >= 0 {
+		line := content[l]
+		dy := len(line) / w + 1
+		if y - dy < 0 && dy == 1 {
+			ch = 0
+			break
+		} else if y - dy < 0 && dy > 1 {
+			ch = len(line) % w
+			break
+		}
+		l--
+		y -= dy
+	}
+
+	// draw from start line and char down
 	for y := 0; y < h; y++ {
-		if c.X[l] == nil {
-			c.X[l] = PosMap{}
-			c.Y[l] = PosMap{}
+		if c.xs[l] == nil {
+			c.xs[l] = map[int]int{}
+			c.ys[l] = map[int]int{}
 		}
-		if c.Char[y] == nil {
-			c.Char[y] = PosMap{}
+		if c.chars[y] == nil {
+			c.chars[y] = map[int]int{}
+			c.lines[y] = map[int]int{}
 		}
 
-		c.Line[y] = -1
 		var line []rune
 		if l < len(content) {
 			line = content[l]
-			c.Line[y] = l
 		}
 		for x := 0; x < w; x++ {
-			c.X[l][ch] = x
-			c.Y[l][ch] = y
-			c.Char[y][x] = ch
+			c.xs[l][ch] = x
+			c.ys[l][ch] = y
+			c.chars[y][x] = ch
+			c.lines[y][x] = l
 			if ch >= len(line) {
-				c.Char[y][x] = -1
+				c.chars[y][x] = -1
+			}
+			if l >= len(content) {
+				c.lines[y][x] = -1
 			}
 			ch++
 		}
 
 		if ch >= len(line) { // if we drew entire line
-			l++   // go to next line
+			l++    // go to next line
 			ch = 0 // at first char
 		}
 	}
