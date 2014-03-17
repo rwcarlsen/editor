@@ -39,11 +39,17 @@ func (c *WrapView) Line(x, y int) int {
 }
 
 func (c *WrapView) X(line, char int) int {
-	return c.xs[line][char]
+	if v, ok := c.xs[line][char]; ok {
+		return v
+	}
+	return -1
 }
 
 func (c *WrapView) Y(line, char int) int {
-	return c.ys[line][char]
+	if v, ok := c.ys[line][char]; ok {
+		return v
+	}
+	return -1
 }
 
 func (c *WrapView) init(w, h int, content [][]rune, startl, starty int) {

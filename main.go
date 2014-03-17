@@ -65,6 +65,9 @@ func (s *Screen) MovCursorX(n int) {
 }
 
 func (s *Screen) MovCursorY(n int) {
+	cv := NewWrapView(s.W - s.ndigits(), s.H, s.Content, s.CursorY, s.ypivot)
+	lg.Printf("ypivot=%v, cursorline=%v, cursory=%v\n", s.ypivot, s.CursorY, cv.Y(s.CursorY, s.CursorX))
+
 	if s.CursorY + n >= len(s.Content) {
 		s.CursorY = len(s.Content) - 1
 	} else if s.CursorY + n < 0 {
@@ -76,9 +79,12 @@ func (s *Screen) MovCursorY(n int) {
 	// keep x cursor pos on text for new line
 	s.MovCursorX(0)
 
-	cv := NewWrapView(s.W - s.ndigits(), s.H, s.Content, s.CursorY, s.ypivot)
-	if cv.Y(s.CursorY, 0) > 0 && cv.Y(s.CursorY, 0) < s.H-1 {
+	// if new cursor position is on prev screen render, 
+	// move the cursor draw location to that screen loc
+	// (i.e. don't scroll the screen)
+	if cv.Y(s.CursorY, s.CursorX) != -1 {
 		s.ypivot = cv.Y(s.CursorY, s.CursorX)
+		lg.Printf("new ypivot = %v\n", s.ypivot)
 	}
 }
 
@@ -133,7 +139,6 @@ func (s *Screen) Draw() {
 		prev := -1
 		for y := 0; y < s.H; y++ {
 			line := cv.Line(0, y)
-			lg.Println(line)
 			if line == -1 {
 				break
 			} else if line == prev {
