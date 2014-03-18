@@ -37,14 +37,14 @@ func main() {
 	fname := flag.Arg(0)
 	s, err := NewSession(fname)
 	if err != nil {
-		log.Print(err)
+		lg.Print(err)
 		return
 	}
 
 	// run ...
 	err = s.Run()
 	if err != ErrQuit {
-		log.Print(err)
+		lg.Print(err)
 	}
 }
 

@@ -60,19 +60,22 @@ func (c *WrapView) init(w, h int, content [][]rune, startl, starty int) {
 
 	// figure out line+char for top left corner of canvas
 	l, ch := startl, 0
-	y := starty
-	for l > 0 {
-		l--
-		line := content[l]
-		dy := len(line) / w + 1
-		if y - dy < 0 && dy == 1 {
-			ch = 0
-			break
-		} else if y - dy < 0 && dy > 1 {
-			ch = len(line) % w
-			break
+	if starty > 0 {
+		y := starty - 1
+		for l > 0 {
+			l--
+			line := content[l]
+			dy := len(line)/w + 1
+			if dy > y && dy == 1 {
+				ch = 0
+				break
+			} else if dy > y && dy > 1 {
+				ch = len(line) % w
+				break
+			}
+			y -= dy
 		}
-		y -= dy
+		lg.Printf("l=%v, y=%v\n", l, y)
 	}
 
 	// draw from start line and char down
