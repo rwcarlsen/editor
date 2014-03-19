@@ -95,21 +95,35 @@ func (s *Screen) ndigits() int {
 	return 0
 }
 
+func (s *Screen) Newline() {
+	l, c := s.CursorY, s.CursorX
+	line := s.Content[l]
+	head := line[:c]
+	tail := append([]rune{'\n'}, line[c:]...)
+	s.Content[l] = head
+	s.Content = append(s.Content[:l+1], append([][]rune{tail}, s.Content[l+1:]...)...)
+	s.CursorY++
+	s.CursorX = 0
+}
+
+func (s *Screen) Backspace() {
+	l, c := s.CursorY, s.CursorX
+	if c + l == 0 {
+	} else if c == 0 {
+		s.Content[l-1] = append(s.Content[l-1], s.Content[l]...)
+		s.Content = append(s.Content[:l], s.Content[l+1:]...)
+		s.CursorY--
+	} else {
+		s.CursorX--
+		s.Content[l] = append(s.Content[l][:c-1], s.Content[l][c:]...)
+	}
+}
+
 func (s *Screen) Insert(ch rune) {
 	l, c := s.CursorY, s.CursorX
 	line := s.Content[l]
-
-	if ch == '\n' {
-		head := line[:c]
-		tail := append([]rune{'\n'}, line[c:]...)
-		s.Content[l] = head
-		s.Content = append(s.Content[:l+1], append([][]rune{tail}, s.Content[l+1:]...)...)
-		s.CursorY++
-		s.CursorX = 0
-	} else {
-		s.Content[l] = append(line[:c], append([]rune{ch}, line[c:]...)...)
-		s.CursorX++
-	}
+	s.Content[l] = append(line[:c], append([]rune{ch}, line[c:]...)...)
+	s.CursorX++
 }
 
 func (s *Screen) Resize(w, h int) {
@@ -221,7 +235,9 @@ func (s *Session) HandleKey(ev termbox.Event) error {
 
 	switch ev.Key {
 	case termbox.KeyEnter:
-		s.scr.Insert('\n')
+		s.scr.Newline()
+	case termbox.KeyBackspace, termbox.KeyBackspace2:
+		s.scr.Backspace()
 	case termbox.KeySpace:
 		s.scr.Insert(' ')
 	case termbox.KeyArrowUp:
