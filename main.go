@@ -66,7 +66,6 @@ func (s *Screen) MovCursorX(n int) {
 
 func (s *Screen) MovCursorY(n int) {
 	cv := NewWrapView(s.W - s.ndigits(), s.H, s.Content, s.CursorY, s.ypivot)
-	lg.Printf("ypivot=%v, cursorline=%v, cursory=%v\n", s.ypivot, s.CursorY, cv.Y(s.CursorY, s.CursorX))
 
 	if s.CursorY + n >= len(s.Content) {
 		s.CursorY = len(s.Content) - 1
@@ -82,9 +81,8 @@ func (s *Screen) MovCursorY(n int) {
 	// if new cursor position is on prev screen render, 
 	// move the cursor draw location to that screen loc
 	// (i.e. don't scroll the screen)
-	if cv.Y(s.CursorY, s.CursorX) != -1 {
+	if Contains(cv, s.CursorY, s.CursorX) {
 		s.ypivot = cv.Y(s.CursorY, s.CursorX)
-		lg.Printf("new ypivot = %v\n", s.ypivot)
 	}
 }
 
@@ -99,7 +97,8 @@ func (s *Screen) Newline() {
 	l, c := s.CursorY, s.CursorX
 	line := s.Content[l]
 	head := line[:c]
-	tail := append([]rune{'\n'}, line[c:]...)
+	tail := line[c:]
+	lg.Printf("head='%v', tail='%v', l=%v\n", head, tail, l)
 	s.Content[l] = head
 	s.Content = append(s.Content[:l+1], append([][]rune{tail}, s.Content[l+1:]...)...)
 	s.CursorY++
@@ -110,9 +109,10 @@ func (s *Screen) Backspace() {
 	l, c := s.CursorY, s.CursorX
 	if c + l == 0 {
 	} else if c == 0 {
+		s.CursorX = len(s.Content[l-1])
+		s.CursorY--
 		s.Content[l-1] = append(s.Content[l-1], s.Content[l]...)
 		s.Content = append(s.Content[:l], s.Content[l+1:]...)
-		s.CursorY--
 	} else {
 		s.CursorX--
 		s.Content[l] = append(s.Content[l][:c-1], s.Content[l][c:]...)

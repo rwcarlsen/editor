@@ -16,6 +16,11 @@ type WrapView struct {
 	ys    PosMap // map[line#]map[char#]y
 }
 
+func Contains(v View, line, char int) bool {
+	x, y := RenderPos(v, line, char)
+	return x != -1 && y != -1
+}
+
 func RenderPos(v View, line, char int) (x, y int) {
 	return v.X(line, char), v.Y(line, char)
 }
