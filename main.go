@@ -24,7 +24,7 @@ func main() {
 	defer flog.Close()
 	lg = log.New(flog, "", 0)
 
-	// start terminal
+	// start termbox
 	err = termbox.Init()
 	if err != nil {
 		log.Print(err)
@@ -71,8 +71,8 @@ func NewSession(fname string) (*Session, error) {
 	b := NewBuffer(data)
 
 	w, h := termbox.Size()
-	//v := &LineNumView{View: &WrapView{}}
-	v := &WrapView{}
+	v := &LineNumView{View: &WrapView{}}
+	//v := &WrapView{}
 	v.SetBuf(b)
 	v.SetSize(w, h)
 	return &Session{

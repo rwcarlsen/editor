@@ -20,6 +20,19 @@ type Surface interface {
 	Y(line, char int) int
 }
 
+func Contains(s Surface, line, char int) bool {
+	x, y := RenderPos(s, line, char)
+	return x != -1 && y != -1
+}
+
+func RenderPos(s Surface, line, char int) (x, y int) {
+	return s.X(line, char), s.Y(line, char)
+}
+
+func DataPos(s Surface, x, y int) (line, char int) {
+	return s.Line(x, y), s.Char(x, y)
+}
+
 type WrapView struct {
 	w, h           int
 	b              *Buffer
@@ -40,19 +53,6 @@ func (v *WrapView) SetRef(line, char int, x, y int) {
 	v.startl, v.startc = line, char
 }
 
-func Contains(s Surface, line, char int) bool {
-	x, y := RenderPos(s, line, char)
-	return x != -1 && y != -1
-}
-
-func RenderPos(s Surface, line, char int) (x, y int) {
-	return s.X(line, char), s.Y(line, char)
-}
-
-func DataPos(s Surface, x, y int) (line, char int) {
-	return s.Line(x, y), s.Char(x, y)
-}
-
 type PosMap map[int]map[int]int
 
 type WrapSurf struct {
@@ -65,6 +65,9 @@ type WrapSurf struct {
 
 func (c *WrapSurf) Rune(x, y int) rune {
 	l, ch := DataPos(c, x, y)
+	if l == -1 || ch == -1 {
+		return ' '
+	}
 	return c.b.Rune(l, ch)
 }
 
@@ -176,6 +179,9 @@ func (v *LineNumView) Render() Surface {
 		prev = line
 		nums = strings.Repeat(" ", v.ndigits-1-len(nums)) + nums + " "
 		for n := 0; n < v.ndigits; n++ {
+			if _, ok := linenums[n]; !ok {
+				linenums[n] = map[int]rune{}
+			}
 			linenums[n][y] = rune(nums[n])
 		}
 	}
@@ -189,14 +195,14 @@ func (v *LineNumView) Render() Surface {
 
 func (v *LineNumView) SetSize(w, h int) {
 	v.w, v.h = w, h
-	v.SetSize(w-v.ndigits, h)
+	v.View.SetSize(w-v.ndigits, h)
 }
 func (v *LineNumView) SetBuf(b *Buffer) {
 	v.b = b
 	v.View.SetBuf(b)
 }
 func (v *LineNumView) SetRef(line, char int, x, y int) {
-	v.SetRef(line, char, x-v.ndigits, y)
+	v.View.SetRef(line, char, x-v.ndigits, y)
 }
 
 type LineNumSurf struct {
