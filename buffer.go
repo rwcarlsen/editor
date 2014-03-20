@@ -5,7 +5,7 @@ import (
 )
 
 type Buffer struct {
-	data []rune
+	data  []rune
 	lines [][]rune
 }
 
@@ -69,4 +69,3 @@ func (b *Buffer) Offset(line, char int) int {
 func (b *Buffer) Bytes() []byte {
 	return []byte(string(b.data))
 }
-

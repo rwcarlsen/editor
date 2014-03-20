@@ -51,9 +51,9 @@ func main() {
 type Session struct {
 	File     string
 	LineNums bool // true to print line numbers
-	W, H     int // size of terminal window
+	W, H     int  // size of terminal window
 	Buf      *Buffer
-	View View
+	View     View
 	CursorL  int // cursor line#
 	CursorC  int // cursor char#
 	ypivot   int
@@ -77,12 +77,12 @@ func NewSession(fname string) (*Session, error) {
 	v.SetBuf(b)
 	v.SetSize(w, h)
 	return &Session{
-		File: fname,
+		File:     fname,
 		LineNums: true,
 		W:        w,
 		H:        h,
-		Buf:  b,
-		View: v,
+		Buf:      b,
+		View:     v,
 	}, nil
 }
 
@@ -174,7 +174,7 @@ func (s *Session) ndigits() int {
 func (s *Session) Newline() {
 	l, c := s.CursorL, s.CursorC
 	s.Buf.Insert(s.Buf.Offset(l, c), []rune{'\n'})
-	s.CursorL++
+	s.MovCursorY(1)
 	s.CursorC = 0
 }
 
@@ -182,7 +182,8 @@ func (s *Session) Backspace() {
 	l, c := s.CursorL, s.CursorC
 	offset := s.Buf.Offset(l, c)
 	s.Buf.Delete(offset-1, offset)
-	s.CursorL, s.CursorC = s.Buf.Pos(offset-1)
+	s.CursorL, s.CursorC = s.Buf.Pos(offset - 1)
+	s.MovCursorY(0) // force refresh of scroll reference
 }
 
 func (s *Session) Insert(chs ...rune) {
@@ -219,7 +220,7 @@ func (s *Session) Draw() {
 			} else if line == prev {
 				continue
 			}
-prev = line
+			prev = line
 			nums := fmt.Sprint(line + 1)
 			nums = strings.Repeat(" ", s.ndigits()-1-len(nums)) + nums + " "
 			for n := 0; n < s.ndigits(); n++ {

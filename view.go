@@ -28,7 +28,7 @@ func (v *WrapView) Render() Surface {
 }
 
 func (v *WrapView) SetSize(w, h int) { v.w, v.h = w, h }
-func (v *WrapView) SetBuf(b *Buffer) {v.b = b }
+func (v *WrapView) SetBuf(b *Buffer) { v.b = b }
 func (v *WrapView) SetRef(line, char int, x, y int) {
 	v.startx, v.starty = x, y
 	v.startl, v.startc = line, char
