@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strings"
 )
 
 var ErrQuit = fmt.Errorf("Quit")
@@ -48,13 +49,15 @@ func main() {
 }
 
 type Session struct {
-	File     string
-	W, H     int  // size of terminal window
-	Buf      *Buffer
-	View     View
-	CursorL  int // cursor line#
-	CursorC  int // cursor char#
-	ypivot   int
+	File       string
+	W, H       int // size of terminal window
+	Buf        *Buffer
+	View       View
+	CursorL    int // cursor line#
+	CursorC    int // cursor char#
+	ExpandTabs bool
+	TabWidth   int
+	ypivot     int
 }
 
 func NewSession(fname string) (*Session, error) {
@@ -76,11 +79,13 @@ func NewSession(fname string) (*Session, error) {
 	v.SetBuf(b)
 	v.SetSize(w, h)
 	return &Session{
-		File:     fname,
-		W:        w,
-		H:        h,
-		Buf:      b,
-		View:     v,
+		File:       fname,
+		W:          w,
+		H:          h,
+		Buf:        b,
+		View:       v,
+		TabWidth:   4,
+		ExpandTabs: true,
 	}, nil
 }
 
@@ -119,6 +124,12 @@ func (s *Session) HandleKey(ev termbox.Event) error {
 		s.Backspace()
 	case termbox.KeySpace:
 		s.Insert(' ')
+	case termbox.KeyTab:
+		if s.ExpandTabs {
+			s.Insert([]rune(strings.Repeat(" ", s.TabWidth))...)
+		} else {
+			s.Insert('\t')
+		}
 	case termbox.KeyArrowUp:
 		s.MovCursorY(-1)
 	case termbox.KeyArrowDown:
