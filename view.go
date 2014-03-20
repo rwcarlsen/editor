@@ -1,10 +1,10 @@
 package main
 
 type View interface {
-	Line(x, y int) int
-	Char(x, y int) int
-	X(line, char int) int
-	Y(line, char int) int
+	Render(w, h int, b *Buffer) 
+	SetSize(w, h int)
+	SetContent(b *Buffer)
+	SetRef(line, char int, x, y int)
 }
 
 type PosMap map[int]map[int]int

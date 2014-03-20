@@ -48,102 +48,19 @@ func main() {
 	}
 }
 
-type Screen struct {
-	LineNums  bool
-	W, H      int
-	X, Y      int // upper corner of screen
-	Content   [][]rune
-	CursorX   int                 // cursor line#
-	CursorY   int                 // cursor char#
-	ypivot int
-}
-
-func (s *Screen) MovCursorX(n int) {
-	line := s.Content[s.CursorY]
-	s.CursorX = min(s.CursorX+n, len(line))
-	s.CursorX = max(s.CursorX, 0)
-}
-
-func (s *Screen) MovCursorY(n int) {
-	cv := NewWrapView(s.W - s.ndigits(), s.H, s.Content, s.CursorY, s.ypivot)
-
-	if s.CursorY + n >= len(s.Content) {
-		s.CursorY = len(s.Content) - 1
-	} else if s.CursorY + n < 0 {
-		s.CursorY = 0
-	} else {
-		s.CursorY += n
-	}
-
-	// keep x cursor pos on text for new line
-	s.MovCursorX(0)
-
-	// if new cursor position is on prev screen render, 
-	// move the cursor draw location to that screen loc
-	// (i.e. don't scroll the screen)
-	if Contains(cv, s.CursorY, s.CursorX) {
-		s.ypivot = cv.Y(s.CursorY, s.CursorX)
-	}
-}
-
-func (s *Screen) ndigits() int {
-	if s.LineNums {
-		return len(fmt.Sprint(len(s.Content))) + 1
-	}
-	return 0
-}
-
-func (s *Screen) Newline() {
-	l, c := s.CursorY, s.CursorX
-	line := s.Content[l]
-	head := line[:c]
-	tail := line[c:]
-	lg.Printf("head='%v', tail='%v', l=%v\n", head, tail, l)
-	s.Content[l] = head
-	s.Content = append(s.Content[:l+1], append([][]rune{tail}, s.Content[l+1:]...)...)
-	s.CursorY++
-	s.CursorX = 0
-}
-
-func (s *Screen) Backspace() {
-	l, c := s.CursorY, s.CursorX
-	if c + l == 0 {
-	} else if c == 0 {
-		s.CursorX = len(s.Content[l-1])
-		s.CursorY--
-		s.Content[l-1] = append(s.Content[l-1], s.Content[l]...)
-		s.Content = append(s.Content[:l], s.Content[l+1:]...)
-	} else {
-		s.CursorX--
-		s.Content[l] = append(s.Content[l][:c-1], s.Content[l][c:]...)
-	}
-}
-
-func (s *Screen) Insert(ch rune) {
-	l, c := s.CursorY, s.CursorX
-	line := s.Content[l]
-	s.Content[l] = append(line[:c], append([]rune{ch}, line[c:]...)...)
-	s.CursorX++
-}
-
-func (s *Screen) Resize(w, h int) {
-	s.W = w
-	s.H = h
-}
-
-func (s *Screen) Draw() {
-	cv := NewWrapView(s.W-s.ndigits(), s.H, s.Content, s.CursorY, s.ypivot)
+func (s *Session) Draw() {
+	cv := NewWrapView(s.W-s.ndigits(), s.H, s.Buf, s.CursorL, s.ypivot)
 
 	// draw cursor
-	x, y := RenderPos(cv, s.CursorY, s.CursorX)
-	termbox.SetCursor(s.X+s.ndigits()+x, s.Y+y)
+	x, y := RenderPos(cv, s.CursorL, s.CursorC)
+	termbox.SetCursor(s.ndigits()+x, y)
 
 	// draw content
 	for y := 0; y < s.H; y++ {
 		for x := 0; x < s.W-s.ndigits(); x++ {
 			line, char := DataPos(cv, x, y)
 			if char != -1 {
-				termbox.SetCell(s.X + x + s.ndigits(), s.Y + y, s.Content[line][char], 0, 0)
+				termbox.SetCell(x+s.ndigits(), y, s.Buf.Rune(line, char), 0, 0)
 			}
 		}
 	}
@@ -163,15 +80,20 @@ func (s *Screen) Draw() {
 			nums := fmt.Sprint(line + 1)
 			nums = strings.Repeat(" ", s.ndigits()-1-len(nums)) + nums + " "
 			for n := 0; n < s.ndigits(); n++ {
-				termbox.SetCell(s.X+n, s.Y + y, rune(nums[n]), 0, 0)
+				termbox.SetCell(s.X+n, s.Y+y, rune(nums[n]), 0, 0)
 			}
 		}
 	}
 }
 
 type Session struct {
-	File string
-	scr  *Screen
+	File     string
+	LineNums bool // true to print line numbers
+	W, H     int // size of terminal window
+	Buf      *Buffer
+	CursorL  int // cursor line#
+	CursorC  int // cursor char#
+	ypivot   int
 }
 
 func NewSession(fname string) (*Session, error) {
@@ -185,24 +107,14 @@ func NewSession(fname string) (*Session, error) {
 	if err != nil {
 		return nil, err
 	}
-	slines := strings.Split(string(data), "\n")
-	lines := make([][]rune, len(slines))
-	for i, l := range slines {
-		lines[i] = []rune(l)
-	}
 
-	// initialize and draw start screen
 	w, h := termbox.Size()
-	scr := &Screen{
+	return &Session{
+		File: fname,
 		LineNums: true,
 		W:        w,
 		H:        h,
-		Content:  lines,
-	}
-
-	return &Session{
-		File: fname,
-		scr:  scr,
+		Buf:  NewBuffer(data),
 	}, nil
 }
 
@@ -219,7 +131,7 @@ func (s *Session) Run() error {
 				return err
 			}
 		case termbox.EventResize:
-			s.scr.Resize(ev.Width, ev.Height)
+			s.W, s.H = ev.Width, ev.Height
 		case termbox.EventMouse:
 		case termbox.EventError:
 			return ev.Err
@@ -241,17 +153,72 @@ func (s *Session) HandleKey(ev termbox.Event) error {
 	case termbox.KeySpace:
 		s.scr.Insert(' ')
 	case termbox.KeyArrowUp:
-		s.scr.MovCursorY(-1)
+		s.scr.MovCursorL(-1)
 	case termbox.KeyArrowDown:
-		s.scr.MovCursorY(1)
+		s.scr.MovCursorL(1)
 	case termbox.KeyArrowLeft:
-		s.scr.MovCursorX(-1)
+		s.scr.MovCursorC(-1)
 	case termbox.KeyArrowRight:
-		s.scr.MovCursorX(1)
+		s.scr.MovCursorC(1)
 	case termbox.KeyEsc:
 		return ErrQuit
 	}
 	return nil
+}
+
+func (s *Session) MovCursorX(n int) {
+	line := s.Buf.Line(s.CursorL)
+	s.CursorC = min(s.CursorC+n, len(line))
+	s.CursorC = max(s.CursorC, 0)
+}
+
+func (s *Session) MovCursorY(n int) {
+	cv := NewWrapView(s.W-s.ndigits(), s.H, s.Buf, s.CursorL, s.ypivot)
+
+	if s.CursorL+n >= s.Buf.Nlines()) {
+		s.CursorL = s.Buf.Nlines() - 1
+	} else if s.CursorL+n < 0 {
+		s.CursorL = 0
+	} else {
+		s.CursorL += n
+	}
+
+	// keep x cursor pos on text for new line
+	s.MovCursorX(0)
+
+	// if new cursor position is on prev screen render,
+	// move the cursor draw location to that screen loc
+	// (i.e. don't scroll the screen)
+	if Contains(cv, s.CursorL, s.CursorC) {
+		s.ypivot = cv.Y(s.CursorL, s.CursorC)
+	}
+}
+
+func (s *Session) ndigits() int {
+	if s.LineNums {
+		return len(fmt.Sprint(s.Buf.Nlines())) + 1
+	}
+	return 0
+}
+
+func (s *Session) Newline() {
+	l, c := s.CursorL, s.CursorC
+	s.Buf.Insert(s.Buf.Offset(l, c), []rune{'\n'})
+	s.CursorL++
+	s.CursorC = 0
+}
+
+func (s *Session) Backspace() {
+	l, c := s.CursorL, s.CursorC
+	offset := s.Buf.Offset(l, c)
+	s.Buf.Delete(offset-1, offset)
+	s.CursorL, s.CursorC = s.Buf.Pos(offset-1)
+}
+
+func (s *Screen) Insert(chs ...rune) {
+	l, c := s.CursorL, s.CursorC
+	s.Buf.Insert(s.Buf.Offset(l, c), chs)
+	s.CursorC += len(chs)
 }
 
 func min(x, y int) int {
