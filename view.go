@@ -1,5 +1,10 @@
 package main
 
+import (
+	"fmt"
+	"strings"
+)
+
 type View interface {
 	Render() Surface
 	SetSize(w, h int)
@@ -10,6 +15,7 @@ type View interface {
 type Surface interface {
 	Char(x, y int) int
 	Line(x, y int) int
+	Rune(x, y int) rune
 	X(line, char int) int
 	Y(line, char int) int
 }
@@ -54,6 +60,12 @@ type WrapSurf struct {
 	chars PosMap // map[y]map[x]char#
 	xs    PosMap // map[line#]map[char#]x
 	ys    PosMap // map[line#]map[char#]y
+	b *Buffer
+}
+
+func (c *WrapSurf) Rune(x, y int) rune {
+	l, ch := DataPos(c, x, y)
+	return c.b.Rune(l, ch)
 }
 
 func (c *WrapSurf) Char(x, y int) int {
@@ -79,6 +91,7 @@ func (c *WrapSurf) Y(line, char int) int {
 }
 
 func (c *WrapSurf) init(w, h int, b *Buffer, startl, starty int) {
+	c.b = b
 	c.lines = PosMap{}
 	c.chars = PosMap{}
 	c.xs = PosMap{}
@@ -138,3 +151,74 @@ func (c *WrapSurf) init(w, h int, b *Buffer, startl, starty int) {
 		}
 	}
 }
+
+type LineNumView struct {
+	View
+	b *Buffer
+	w, h int
+	ndigits int
+}
+
+func (v *LineNumView) Render() Surface {
+	linenums := map[int]map[int]rune{}
+	v.ndigits = len(fmt.Sprint(v.b.Nlines())) + 1
+	surf := v.View.Render()
+
+	prev := -1
+	for y := 0; y < v.h; y++ {
+		line := surf.Line(0, y)
+		nums := ""
+		if line == -1 {
+			break
+		} else if line != prev {
+			nums = fmt.Sprint(line + 1)
+		}
+		prev = line
+		nums = strings.Repeat(" ", v.ndigits-1-len(nums)) + nums + " "
+		for n := 0; n < v.ndigits; n++ {
+			linenums[n][y] = rune(nums[n])
+		}
+	}
+
+	return &LineNumSurf{
+		Surface: surf,
+		ndigits: v.ndigits,
+		nums: linenums,
+	}
+}
+
+func (v *LineNumView) SetSize(w, h int) {
+	v.w, v.h = w, h
+	v.SetSize(w-v.ndigits, h)
+}
+func (v *LineNumView) SetBuf(b *Buffer) {
+	v.b = b
+	v.View.SetBuf(b)
+}
+func (v *LineNumView) SetRef(line, char int, x, y int) {
+	v.SetRef(line, char, x-v.ndigits, y)
+}
+
+type LineNumSurf struct {
+	Surface
+	ndigits int
+	nums map[int]map[int]rune
+}
+
+func (s *LineNumSurf) Char(x, y int) int {
+	return s.Surface.Char(x-s.ndigits, y)
+}
+func (s *LineNumSurf) Line(x, y int) int {
+	return s.Surface.Line(x-s.ndigits, y)
+}
+func (s *LineNumSurf) Rune(x, y int) rune {
+	if x < s.ndigits {
+		return s.nums[x][y]
+	} else {
+		return s.Surface.Rune(x-s.ndigits, y)
+	}
+}
+func (s *LineNumSurf) X(line, char int) int {
+	return s.Surface.X(line, char) + s.ndigits
+}
+

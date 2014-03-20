@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"strings"
 )
 
 var ErrQuit = fmt.Errorf("Quit")
@@ -50,7 +49,6 @@ func main() {
 
 type Session struct {
 	File     string
-	LineNums bool // true to print line numbers
 	W, H     int  // size of terminal window
 	Buf      *Buffer
 	View     View
@@ -73,12 +71,12 @@ func NewSession(fname string) (*Session, error) {
 	b := NewBuffer(data)
 
 	w, h := termbox.Size()
+	//v := &LineNumView{View: &WrapView{}}
 	v := &WrapView{}
 	v.SetBuf(b)
 	v.SetSize(w, h)
 	return &Session{
 		File:     fname,
-		LineNums: true,
 		W:        w,
 		H:        h,
 		Buf:      b,
@@ -100,7 +98,7 @@ func (s *Session) Run() error {
 			}
 		case termbox.EventResize:
 			s.W, s.H = ev.Width, ev.Height
-			s.View.SetSize(s.W-s.ndigits(), s.H)
+			s.View.SetSize(s.W, s.H)
 		case termbox.EventMouse:
 		case termbox.EventError:
 			return ev.Err
@@ -164,13 +162,6 @@ func (s *Session) MovCursorY(n int) {
 	}
 }
 
-func (s *Session) ndigits() int {
-	if s.LineNums {
-		return len(fmt.Sprint(s.Buf.Nlines())) + 1
-	}
-	return 0
-}
-
 func (s *Session) Newline() {
 	l, c := s.CursorL, s.CursorC
 	s.Buf.Insert(s.Buf.Offset(l, c), []rune{'\n'})
@@ -198,34 +189,12 @@ func (s *Session) Draw() {
 
 	// draw cursor
 	x, y := RenderPos(cv, s.CursorL, s.CursorC)
-	termbox.SetCursor(s.ndigits()+x, y)
+	termbox.SetCursor(x, y)
 
 	// draw content
 	for y := 0; y < s.H; y++ {
-		for x := 0; x < s.W-s.ndigits(); x++ {
-			line, char := DataPos(cv, x, y)
-			if char != -1 {
-				termbox.SetCell(x+s.ndigits(), y, s.Buf.Rune(line, char), 0, 0)
-			}
-		}
-	}
-
-	// draw line number
-	if s.LineNums {
-		prev := -1
-		for y := 0; y < s.H; y++ {
-			line := cv.Line(0, y)
-			if line == -1 {
-				break
-			} else if line == prev {
-				continue
-			}
-			prev = line
-			nums := fmt.Sprint(line + 1)
-			nums = strings.Repeat(" ", s.ndigits()-1-len(nums)) + nums + " "
-			for n := 0; n < s.ndigits(); n++ {
-				termbox.SetCell(n, y, rune(nums[n]), 0, 0)
-			}
+		for x := 0; x < s.W; x++ {
+			termbox.SetCell(x, y, cv.Rune(x, y), 0, 0)
 		}
 	}
 }
