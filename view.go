@@ -1,63 +1,84 @@
 package main
 
 type View interface {
-	Render(w, h int, b *Buffer) 
+	Render() Surface
 	SetSize(w, h int)
-	SetContent(b *Buffer)
+	SetBuf(b *Buffer)
 	SetRef(line, char int, x, y int)
+}
+
+type Surface interface {
+	Char(x, y int) int
+	Line(x, y int) int
+	X(line, char int) int
+	Y(line, char int) int
+}
+
+type WrapView struct {
+	w, h           int
+	b              *Buffer
+	startl, startc int
+	startx, starty int
+}
+
+func (v *WrapView) Render() Surface {
+	surf := &WrapSurf{}
+	surf.init(v.w, v.h, v.b, v.startl, v.starty)
+	return surf
+}
+
+func (v *WrapView) SetSize(w, h int) { v.w, v.h = w, h }
+func (v *WrapView) SetBuf(b *Buffer) {v.b = b }
+func (v *WrapView) SetRef(line, char int, x, y int) {
+	v.startx, v.starty = x, y
+	v.startl, v.startc = line, char
+}
+
+func Contains(s Surface, line, char int) bool {
+	x, y := RenderPos(s, line, char)
+	return x != -1 && y != -1
+}
+
+func RenderPos(s Surface, line, char int) (x, y int) {
+	return s.X(line, char), s.Y(line, char)
+}
+
+func DataPos(s Surface, x, y int) (line, char int) {
+	return s.Line(x, y), s.Char(x, y)
 }
 
 type PosMap map[int]map[int]int
 
-type WrapView struct {
+type WrapSurf struct {
 	lines PosMap // map[y]map[x]line#
 	chars PosMap // map[y]map[x]char#
 	xs    PosMap // map[line#]map[char#]x
 	ys    PosMap // map[line#]map[char#]y
 }
 
-func Contains(v View, line, char int) bool {
-	x, y := RenderPos(v, line, char)
-	return x != -1 && y != -1
-}
-
-func RenderPos(v View, line, char int) (x, y int) {
-	return v.X(line, char), v.Y(line, char)
-}
-
-func DataPos(v View, x, y int) (line, char int) {
-	return v.Line(x, y), v.Char(x, y)
-}
-
-func NewWrapView(w, h int, content [][]rune, startl, starty int) *WrapView {
-	c := &WrapView{}
-	c.init(w, h, content, startl, starty)
-	return c
-}
-
-func (c *WrapView) Char(x, y int) int {
+func (c *WrapSurf) Char(x, y int) int {
 	return c.chars[y][x]
 }
 
-func (c *WrapView) Line(x, y int) int {
+func (c *WrapSurf) Line(x, y int) int {
 	return c.lines[y][x]
 }
 
-func (c *WrapView) X(line, char int) int {
+func (c *WrapSurf) X(line, char int) int {
 	if v, ok := c.xs[line][char]; ok {
 		return v
 	}
 	return -1
 }
 
-func (c *WrapView) Y(line, char int) int {
+func (c *WrapSurf) Y(line, char int) int {
 	if v, ok := c.ys[line][char]; ok {
 		return v
 	}
 	return -1
 }
 
-func (c *WrapView) init(w, h int, content [][]rune, startl, starty int) {
+func (c *WrapSurf) init(w, h int, b *Buffer, startl, starty int) {
 	c.lines = PosMap{}
 	c.chars = PosMap{}
 	c.xs = PosMap{}
@@ -69,7 +90,7 @@ func (c *WrapView) init(w, h int, content [][]rune, startl, starty int) {
 		y := starty - 1
 		for l > 0 {
 			l--
-			line := content[l]
+			line := b.Line(l)
 			dy := len(line)/w + 1
 			if dy > y && dy == 1 {
 				ch = 0
@@ -80,7 +101,6 @@ func (c *WrapView) init(w, h int, content [][]rune, startl, starty int) {
 			}
 			y -= dy
 		}
-		lg.Printf("l=%v, y=%v\n", l, y)
 	}
 
 	// draw from start line and char down
@@ -95,8 +115,8 @@ func (c *WrapView) init(w, h int, content [][]rune, startl, starty int) {
 		}
 
 		var line []rune
-		if l < len(content) {
-			line = content[l]
+		if l < b.Nlines() {
+			line = b.Line(l)
 		}
 		for x := 0; x < w; x++ {
 			c.xs[l][ch] = x
@@ -106,7 +126,7 @@ func (c *WrapView) init(w, h int, content [][]rune, startl, starty int) {
 			if ch >= len(line) {
 				c.chars[y][x] = -1
 			}
-			if l >= len(content) {
+			if l >= b.Nlines() {
 				c.lines[y][x] = -1
 			}
 			ch++

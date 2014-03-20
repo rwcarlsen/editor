@@ -1,15 +1,17 @@
 package main
 
 import (
+	"strings"
 )
 
 type Buffer struct {
 	data []rune
-	lines = [][]rune
+	lines [][]rune
 }
 
 func NewBuffer(data []byte) *Buffer {
-	b := &Buffer{data: []rune(data)}
+	s := string(data)
+	b := &Buffer{data: []rune(s)}
 	b.updLines()
 	return b
 }
@@ -19,12 +21,12 @@ func (b *Buffer) Rune(line, char int) rune {
 }
 
 func (b *Buffer) Line(n int) []rune {
-	return b.lines[line]
+	return b.lines[n]
 }
 
-func (b *Buffer) updLines() int {
+func (b *Buffer) updLines() {
 	slines := strings.Split(string(b.data), "\n")
-	b.lines := make([][]rune, len(slines))
+	b.lines = make([][]rune, len(slines))
 	for i, l := range slines {
 		b.lines[i] = []rune(l)
 	}
@@ -45,8 +47,8 @@ func (b *Buffer) Delete(start, end int) {
 }
 
 func (b *Buffer) Pos(offset int) (line, char int) {
-	offset := 0
 	for _, r := range b.data[:offset] {
+		char++
 		if r == '\n' {
 			line++
 			char = 0
@@ -65,6 +67,6 @@ func (b *Buffer) Offset(line, char int) int {
 }
 
 func (b *Buffer) Bytes() []byte {
-	return []byte(b.data)
+	return []byte(string(b.data))
 }
 
