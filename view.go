@@ -5,6 +5,44 @@ import (
 	"strings"
 )
 
+type Tabber struct {
+	Line []rune
+	Tabwidth int
+	VisLen int
+	// ChToX returns the effective position of a rune indexed by the key if all tabs
+	// in the line were expanded to spaces of the Tabber's Tabwidth.
+	ChToX []int
+	// XToCh does the reverse of ChToX
+	XToCh []int
+}
+
+func NewTabber(line []rune, tabw int) *Tabber {
+	vislen := len(line) + strings.Count(string(line), "\t")*tabw
+	t := &Tabber{
+		Line: line,
+		Tabwidth: tabw,
+		VisLen: vislen,
+		ChToX: make([]int, len(line)),
+		XToCh: make([]int, vislen),
+	}
+
+	n := 0
+	for i, r := range line {
+		t.ChToX[i] = n
+		t.XToCh[n] = i
+		if r == '\t' {
+			for j := 0; j < t.Tabwidth; j++ {
+				t.XToCh[n + j] = i
+			}
+			n += t.Tabwidth
+		} else {
+			n++
+		}
+	}
+
+	return t
+}
+
 type View interface {
 	Render() Surface
 	SetSize(w, h int)
@@ -109,14 +147,16 @@ func (c *WrapSurf) init(w, h int, b *Buffer, startl, starty int, tabw int) {
 	for l > 0 && y > 0 {
 		l--
 		line := b.Line(l)
-		dy := len(line)/w + 1
+		t := NewTabber(line, tabw)
+		dy := t.VisLen/w + 1
 		y -= dy
 		ch = 0
-		if y < 0 && len(line) > w {
-			ch = w * -1 * y
+		if y < 0 && t.VisLen > w {
+			ch = t.XToCh[w*-1*y]
 		}
 	}
 
+	lg.Printf("startl=%v, starty=%v, l=%v, ch=%v", startl, starty, l, ch)
 	// draw from start line and char down
 	for y := 0; y < h; y++ {
 		if c.xs[l] == nil {
@@ -132,23 +172,32 @@ func (c *WrapSurf) init(w, h int, b *Buffer, startl, starty int, tabw int) {
 		if l < b.Nlines() {
 			line = b.Line(l)
 		}
+		startch := ch
+		t := NewTabber(line[startch:], tabw)
 		for x := 0; x < w; x++ {
+			if x < t.VisLen {
+				ch = startch + t.XToCh[x]
+			} else {
+				ch = len(line)
+			}
+
 			c.xs[l][ch] = x
 			c.ys[l][ch] = y
 			c.chars[y][x] = ch
 			c.lines[y][x] = l
-			if ch >= len(line) {
-				c.chars[y][x] = -1
-			}
+
 			if l >= b.Nlines() {
 				c.lines[y][x] = -1
 			}
-			ch++
+			if x >= t.VisLen {
+				c.chars[y][x] = -1
+			}
 		}
+		lg.Printf("%+v", c.ys[l])
 
-		if ch >= len(line) { // if we drew entire line
+		if ch == len(line) { // if we drew entire line
+			ch = 0
 			l++    // go to next line
-			ch = 0 // at first char
 		}
 	}
 }
