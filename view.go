@@ -181,8 +181,10 @@ func (c *WrapSurf) init(w, h int, b *Buffer, startl, starty int, tabw int) {
 				ch = len(line)
 			}
 
-			c.xs[l][ch] = x
-			c.ys[l][ch] = y
+			if _, ok := c.xs[l][ch]; !ok {
+				c.xs[l][ch] = x
+				c.ys[l][ch] = y
+			}
 			c.chars[y][x] = ch
 			c.lines[y][x] = l
 

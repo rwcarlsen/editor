@@ -38,7 +38,7 @@ func main() {
 	s := &Session{
 		File: flag.Arg(0),
 		View: v,
-		ExpandTabs: true,
+		ExpandTabs: false,
 		Tabwidth: 4,
 	}
 
