@@ -60,7 +60,7 @@ type WrapSurf struct {
 	chars PosMap // map[y]map[x]char#
 	xs    PosMap // map[line#]map[char#]x
 	ys    PosMap // map[line#]map[char#]y
-	b *Buffer
+	b     *Buffer
 }
 
 func (c *WrapSurf) Rune(x, y int) rune {
@@ -102,20 +102,15 @@ func (c *WrapSurf) init(w, h int, b *Buffer, startl, starty int) {
 
 	// figure out line+char for top left corner of canvas
 	l, ch := startl, 0
-	if starty > 0 {
-		y := starty - 1
-		for l > 0 {
-			l--
-			line := b.Line(l)
-			dy := len(line)/w + 1
-			if dy > y && dy == 1 {
-				ch = 0
-				break
-			} else if dy > y && dy > 1 {
-				ch = len(line) % w
-				break
-			}
-			y -= dy
+	y := starty
+	for l > 0 && y > 0 {
+		l--
+		line := b.Line(l)
+		dy := len(line)/w + 1
+		y -= dy
+		ch = 0
+		if y < 0 && len(line) > w {
+			ch = w * -1 * y
 		}
 	}
 
@@ -157,8 +152,8 @@ func (c *WrapSurf) init(w, h int, b *Buffer, startl, starty int) {
 
 type LineNumView struct {
 	View
-	b *Buffer
-	w, h int
+	b       *Buffer
+	w, h    int
 	ndigits int
 }
 
@@ -189,7 +184,7 @@ func (v *LineNumView) Render() Surface {
 	return &LineNumSurf{
 		Surface: surf,
 		ndigits: v.ndigits,
-		nums: linenums,
+		nums:    linenums,
 	}
 }
 
@@ -208,7 +203,7 @@ func (v *LineNumView) SetRef(line, char int, x, y int) {
 type LineNumSurf struct {
 	Surface
 	ndigits int
-	nums map[int]map[int]rune
+	nums    map[int]map[int]rune
 }
 
 func (s *LineNumSurf) Char(x, y int) int {
@@ -227,4 +222,3 @@ func (s *LineNumSurf) Rune(x, y int) rune {
 func (s *LineNumSurf) X(line, char int) int {
 	return s.Surface.X(line, char) + s.ndigits
 }
-
