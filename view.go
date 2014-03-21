@@ -10,6 +10,7 @@ type View interface {
 	SetSize(w, h int)
 	SetBuf(b *Buffer)
 	SetRef(line, char int, x, y int)
+	SetTabwidth(n int)
 }
 
 type Surface interface {
@@ -38,15 +39,17 @@ type WrapView struct {
 	b              *Buffer
 	startl, startc int
 	startx, starty int
+	tabw int
 }
 
 func (v *WrapView) Render() Surface {
 	surf := &WrapSurf{}
-	surf.init(v.w, v.h, v.b, v.startl, v.starty)
+	surf.init(v.w, v.h, v.b, v.startl, v.starty, v.tabw)
 	return surf
 }
 
 func (v *WrapView) SetSize(w, h int) { v.w, v.h = w, h }
+func (v *WrapView) SetTabwidth(n int) { v.tabw = n }
 func (v *WrapView) SetBuf(b *Buffer) { v.b = b }
 func (v *WrapView) SetRef(line, char int, x, y int) {
 	v.startx, v.starty = x, y
@@ -93,7 +96,7 @@ func (c *WrapSurf) Y(line, char int) int {
 	return -1
 }
 
-func (c *WrapSurf) init(w, h int, b *Buffer, startl, starty int) {
+func (c *WrapSurf) init(w, h int, b *Buffer, startl, starty int, tabw int) {
 	c.b = b
 	c.lines = PosMap{}
 	c.chars = PosMap{}

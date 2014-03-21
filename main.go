@@ -33,12 +33,13 @@ func main() {
 	}
 	defer termbox.Close()
 
-	// start session
-	fname := flag.Arg(0)
-	s, err := NewSession(fname)
-	if err != nil {
-		lg.Print(err)
-		return
+	v := &LineNumView{View: &WrapView{}}
+	//v := &WrapView{}
+	s := &Session{
+		File: flag.Arg(0),
+		View: v,
+		ExpandTabs: true,
+		Tabwidth: 4,
 	}
 
 	// run ...
@@ -50,46 +51,27 @@ func main() {
 
 type Session struct {
 	File       string
-	W, H       int // size of terminal window
-	Buf        *Buffer
+	w, h       int // size of terminal window
+	buf        *Buffer
 	View       View
 	CursorL    int // cursor line#
 	CursorC    int // cursor char#
 	ExpandTabs bool
-	TabWidth   int
+	Tabwidth   int
 	ypivot     int
 }
 
-func NewSession(fname string) (*Session, error) {
-	f, err := os.Open(fname)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	data, err := ioutil.ReadFile(fname)
-	if err != nil {
-		return nil, err
-	}
-	b := NewBuffer(data)
-
-	w, h := termbox.Size()
-	v := &LineNumView{View: &WrapView{}}
-	//v := &WrapView{}
-	v.SetBuf(b)
-	v.SetSize(w, h)
-	return &Session{
-		File:       fname,
-		W:          w,
-		H:          h,
-		Buf:        b,
-		View:       v,
-		TabWidth:   4,
-		ExpandTabs: true,
-	}, nil
-}
-
 func (s *Session) Run() error {
+	data, err := ioutil.ReadFile(s.File)
+	if err != nil {
+		return err
+	}
+	s.buf = NewBuffer(data)
+	s.w, s.h = termbox.Size()
+	s.View.SetBuf(s.buf)
+	s.View.SetSize(s.w, s.h)
+	s.View.SetTabwidth(s.Tabwidth)
+
 	for {
 		termbox.Clear(0, 0)
 		s.Draw()
@@ -102,8 +84,8 @@ func (s *Session) Run() error {
 				return err
 			}
 		case termbox.EventResize:
-			s.W, s.H = ev.Width, ev.Height
-			s.View.SetSize(s.W, s.H)
+			s.w, s.h = ev.Width, ev.Height
+			s.View.SetSize(s.w, s.h)
 		case termbox.EventMouse:
 		case termbox.EventError:
 			return ev.Err
@@ -126,7 +108,7 @@ func (s *Session) HandleKey(ev termbox.Event) error {
 		s.Insert(' ')
 	case termbox.KeyTab:
 		if s.ExpandTabs {
-			s.Insert([]rune(strings.Repeat(" ", s.TabWidth))...)
+			s.Insert([]rune(strings.Repeat(" ", s.Tabwidth))...)
 		} else {
 			s.Insert('\t')
 		}
@@ -145,7 +127,7 @@ func (s *Session) HandleKey(ev termbox.Event) error {
 }
 
 func (s *Session) MovCursorX(n int) {
-	line := s.Buf.Line(s.CursorL)
+	line := s.buf.Line(s.CursorL)
 	s.CursorC = min(s.CursorC+n, len(line))
 	s.CursorC = max(s.CursorC, 0)
 }
@@ -154,8 +136,8 @@ func (s *Session) MovCursorY(n int) {
 	s.View.SetRef(s.CursorL, 0, 0, s.ypivot)
 	cv := s.View.Render()
 
-	if s.CursorL+n >= s.Buf.Nlines() {
-		s.CursorL = s.Buf.Nlines() - 1
+	if s.CursorL+n >= s.buf.Nlines() {
+		s.CursorL = s.buf.Nlines() - 1
 	} else if s.CursorL+n < 0 {
 		s.CursorL = 0
 	} else {
@@ -175,22 +157,22 @@ func (s *Session) MovCursorY(n int) {
 
 func (s *Session) Newline() {
 	l, c := s.CursorL, s.CursorC
-	s.Buf.Insert(s.Buf.Offset(l, c), []rune{'\n'})
+	s.buf.Insert(s.buf.Offset(l, c), []rune{'\n'})
 	s.MovCursorY(1)
 	s.CursorC = 0
 }
 
 func (s *Session) Backspace() {
 	l, c := s.CursorL, s.CursorC
-	offset := s.Buf.Offset(l, c)
-	s.Buf.Delete(offset-1, offset)
-	s.CursorL, s.CursorC = s.Buf.Pos(offset - 1)
+	offset := s.buf.Offset(l, c)
+	s.buf.Delete(offset-1, offset)
+	s.CursorL, s.CursorC = s.buf.Pos(offset - 1)
 	s.MovCursorY(0) // force refresh of scroll reference
 }
 
 func (s *Session) Insert(chs ...rune) {
 	l, c := s.CursorL, s.CursorC
-	s.Buf.Insert(s.Buf.Offset(l, c), chs)
+	s.buf.Insert(s.buf.Offset(l, c), chs)
 	s.CursorC += len(chs)
 }
 
@@ -203,8 +185,8 @@ func (s *Session) Draw() {
 	termbox.SetCursor(x, y)
 
 	// draw content
-	for y := 0; y < s.H; y++ {
-		for x := 0; x < s.W; x++ {
+	for y := 0; y < s.h; y++ {
+		for x := 0; x < s.w; x++ {
 			termbox.SetCell(x, y, cv.Rune(x, y), 0, 0)
 		}
 	}
