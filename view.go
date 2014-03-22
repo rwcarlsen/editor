@@ -17,7 +17,7 @@ type Tabber struct {
 }
 
 func NewTabber(line []rune, tabw int) *Tabber {
-	vislen := len(line) + strings.Count(string(line), "\t")*tabw
+	vislen := len(line) + strings.Count(string(line), "\t")*(tabw-1)
 	t := &Tabber{
 		Line: line,
 		Tabwidth: tabw,
