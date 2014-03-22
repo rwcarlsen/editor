@@ -183,12 +183,10 @@ func (c *WrapSurf) init(w, h int, b *util.Buffer, startl, starty int, tabw int) 
 	// draw from start line and char down
 	for y := 0; y < h; y++ {
 		if c.xs[l] == nil {
-			c.xs[l] = map[int]int{}
-			c.ys[l] = map[int]int{}
+			c.xs[l], c.ys[l] = map[int]int{}, map[int]int{}
 		}
 		if c.chars[y] == nil {
-			c.chars[y] = map[int]int{}
-			c.lines[y] = map[int]int{}
+			c.chars[y], c.lines[y] = map[int]int{}, map[int]int{}
 		}
 
 		var line []rune
@@ -199,13 +197,13 @@ func (c *WrapSurf) init(w, h int, b *util.Buffer, startl, starty int, tabw int) 
 		var chs []int
 		chs, nextch = RenderLine(line, nextch, w, tabw)
 		for x := 0; x < w; x++ {
-			c.chars[y][x] = chs[x]
+			ch := chs[x]
+			c.chars[y][x] = ch
 			c.lines[y][x] = l
 			if l >= b.Nlines() {
 				c.lines[y][x] = -1
 			}
 
-			ch := chs[x]
 			if _, ok := c.xs[l][ch]; !ok {
 				c.xs[l][ch] = x
 				c.ys[l][ch] = y
