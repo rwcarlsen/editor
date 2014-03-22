@@ -194,8 +194,9 @@ func (c *WrapSurf) init(w, h int, b *Buffer, startl, starty int, tabw int) {
 				c.chars[y][x] = -1
 			}
 		}
+		ch++
 
-		if ch >= len(line)-1 { // if we drew entire line
+		if ch >= len(line) { // if we drew entire line
 			ch = 0
 			l++    // go to next line
 		}
