@@ -15,6 +15,12 @@ type tabbertest struct {
 var tabbertests = []tabbertest{
 	tabbertest{
 		tabw:     1,
+		line:     []rune("\t"),
+		expectx:  []int{0},
+		expectch: []int{0},
+	},
+	tabbertest{
+		tabw:     1,
 		line:     []rune("\t "),
 		expectx:  []int{0, 1},
 		expectch: []int{0, 1},
@@ -36,6 +42,12 @@ var tabbertests = []tabbertest{
 		line:     []rune(" \t"),
 		expectx:  []int{0, 1},
 		expectch: []int{0, 1, 1},
+	},
+	tabbertest{
+		tabw:     3,
+		line:     []rune(" \t\t \t"),
+		expectx:  []int{0, 1, 4, 7, 8},
+		expectch: []int{0, 1, 1, 1, 2, 2, 2, 3, 4, 4, 4},
 	},
 }
 
