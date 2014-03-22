@@ -156,7 +156,6 @@ func (c *WrapSurf) init(w, h int, b *Buffer, startl, starty int, tabw int) {
 		}
 	}
 
-	lg.Printf("startl=%v, starty=%v, l=%v, ch=%v", startl, starty, l, ch)
 	// draw from start line and char down
 	for y := 0; y < h; y++ {
 		if c.xs[l] == nil {
@@ -195,9 +194,8 @@ func (c *WrapSurf) init(w, h int, b *Buffer, startl, starty int, tabw int) {
 				c.chars[y][x] = -1
 			}
 		}
-		lg.Printf("%+v", c.ys[l])
 
-		if ch == len(line) { // if we drew entire line
+		if ch >= len(line)-1 { // if we drew entire line
 			ch = 0
 			l++    // go to next line
 		}
