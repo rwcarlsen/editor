@@ -1,4 +1,4 @@
-package main
+package util
 
 import (
 	"strings"
@@ -62,10 +62,24 @@ func (b *Buffer) Offset(line, char int) int {
 	for _, line := range b.lines[:line] {
 		offset += len(line) + 1 // +1 for newline
 	}
-	offset += min(char, len(b.lines[line]))
+	offset += Min(char, len(b.lines[line]))
 	return offset
 }
 
 func (b *Buffer) Bytes() []byte {
 	return []byte(string(b.data))
+}
+
+func Min(x, y int) int {
+	if x < y {
+		return x
+	}
+	return y
+}
+
+func Max(x, y int) int {
+	if x > y {
+		return x
+	}
+	return y
 }

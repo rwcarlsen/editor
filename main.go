@@ -3,11 +3,14 @@ package main
 import (
 	"flag"
 	"fmt"
-	termbox "github.com/nsf/termbox-go"
 	"io/ioutil"
 	"log"
 	"os"
 	"strings"
+
+	termbox "github.com/nsf/termbox-go"
+	"github.com/rwcarlsen/editor/util"
+	"github.com/rwcarlsen/editor/view"
 )
 
 var ErrQuit = fmt.Errorf("Quit")
@@ -33,8 +36,8 @@ func main() {
 	}
 	defer termbox.Close()
 
-	v := &LineNumView{View: &WrapView{}}
-	//v := &WrapView{}
+	v := &view.LineNum{View: &view.Wrap{}}
+	//v := &view.Wrap{}
 	s := &Session{
 		File: flag.Arg(0),
 		View: v,
@@ -52,8 +55,8 @@ func main() {
 type Session struct {
 	File       string
 	w, h       int // size of terminal window
-	buf        *Buffer
-	View       View
+	buf        *util.Buffer
+	View       view.View
 	CursorL    int // cursor line#
 	CursorC    int // cursor char#
 	ExpandTabs bool
@@ -66,7 +69,7 @@ func (s *Session) Run() error {
 	if err != nil {
 		return err
 	}
-	s.buf = NewBuffer(data)
+	s.buf = util.NewBuffer(data)
 	s.w, s.h = termbox.Size()
 	s.View.SetBuf(s.buf)
 	s.View.SetSize(s.w, s.h)
@@ -128,13 +131,13 @@ func (s *Session) HandleKey(ev termbox.Event) error {
 
 func (s *Session) MovCursorX(n int) {
 	line := s.buf.Line(s.CursorL)
-	s.CursorC = min(s.CursorC+n, len(line))
-	s.CursorC = max(s.CursorC, 0)
+	s.CursorC = util.Min(s.CursorC+n, len(line))
+	s.CursorC = util.Max(s.CursorC, 0)
 }
 
 func (s *Session) MovCursorY(n int) {
 	s.View.SetRef(s.CursorL, 0, 0, s.ypivot)
-	cv := s.View.Render()
+	 surf := s.View.Render()
 
 	if s.CursorL+n >= s.buf.Nlines() {
 		s.CursorL = s.buf.Nlines() - 1
@@ -150,8 +153,8 @@ func (s *Session) MovCursorY(n int) {
 	// if new cursor position is on prev screen render,
 	// move the cursor draw location to that screen loc
 	// (i.e. don't scroll the screen)
-	if Contains(cv, s.CursorL, s.CursorC) {
-		s.ypivot = cv.Y(s.CursorL, s.CursorC)
+	if view.Contains(surf, s.CursorL, s.CursorC) {
+		s.ypivot = surf.Y(s.CursorL, s.CursorC)
 	}
 }
 
@@ -178,30 +181,17 @@ func (s *Session) Insert(chs ...rune) {
 
 func (s *Session) Draw() {
 	s.View.SetRef(s.CursorL, 0, 0, s.ypivot)
-	cv := s.View.Render()
+	surf := s.View.Render()
 
 	// draw cursor
-	x, y := RenderPos(cv, s.CursorL, s.CursorC)
+	x, y := view.RenderPos(surf, s.CursorL, s.CursorC)
 	termbox.SetCursor(x, y)
 
 	// draw content
 	for y := 0; y < s.h; y++ {
 		for x := 0; x < s.w; x++ {
-			termbox.SetCell(x, y, cv.Rune(x, y), 0, 0)
+			termbox.SetCell(x, y, surf.Rune(x, y), 0, 0)
 		}
 	}
 }
 
-func min(x, y int) int {
-	if x < y {
-		return x
-	}
-	return y
-}
-
-func max(x, y int) int {
-	if x > y {
-		return x
-	}
-	return y
-}

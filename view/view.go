@@ -1,14 +1,16 @@
-package main
+package view
 
 import (
 	"fmt"
 	"strings"
+
+	"github.com/rwcarlsen/editor/util"
 )
 
 type Tabber struct {
-	Line []rune
+	Line     []rune
 	Tabwidth int
-	VisLen int
+	VisLen   int
 	// ChToX returns the effective position of a rune indexed by the key if all tabs
 	// in the line were expanded to spaces of the Tabber's Tabwidth.
 	ChToX []int
@@ -19,11 +21,11 @@ type Tabber struct {
 func NewTabber(line []rune, tabw int) *Tabber {
 	vislen := len(line) + strings.Count(string(line), "\t")*(tabw-1)
 	t := &Tabber{
-		Line: line,
+		Line:     line,
 		Tabwidth: tabw,
-		VisLen: vislen,
-		ChToX: make([]int, len(line)),
-		XToCh: make([]int, vislen),
+		VisLen:   vislen,
+		ChToX:    make([]int, len(line)),
+		XToCh:    make([]int, vislen),
 	}
 
 	n := 0
@@ -32,7 +34,7 @@ func NewTabber(line []rune, tabw int) *Tabber {
 		t.XToCh[n] = i
 		if r == '\t' {
 			for j := 0; j < t.Tabwidth; j++ {
-				t.XToCh[n + j] = i
+				t.XToCh[n+j] = i
 			}
 			n += t.Tabwidth
 		} else {
@@ -46,7 +48,7 @@ func NewTabber(line []rune, tabw int) *Tabber {
 type View interface {
 	Render() Surface
 	SetSize(w, h int)
-	SetBuf(b *Buffer)
+	SetBuf(b *util.Buffer)
 	SetRef(line, char int, x, y int)
 	SetTabwidth(n int)
 }
@@ -72,24 +74,24 @@ func DataPos(s Surface, x, y int) (line, char int) {
 	return s.Line(x, y), s.Char(x, y)
 }
 
-type WrapView struct {
+type Wrap struct {
 	w, h           int
-	b              *Buffer
+	b              *util.Buffer
 	startl, startc int
 	startx, starty int
-	tabw int
+	tabw           int
 }
 
-func (v *WrapView) Render() Surface {
+func (v *Wrap) Render() Surface {
 	surf := &WrapSurf{}
 	surf.init(v.w, v.h, v.b, v.startl, v.starty, v.tabw)
 	return surf
 }
 
-func (v *WrapView) SetSize(w, h int) { v.w, v.h = w, h }
-func (v *WrapView) SetTabwidth(n int) { v.tabw = n }
-func (v *WrapView) SetBuf(b *Buffer) { v.b = b }
-func (v *WrapView) SetRef(line, char int, x, y int) {
+func (v *Wrap) SetSize(w, h int)      { v.w, v.h = w, h }
+func (v *Wrap) SetTabwidth(n int)     { v.tabw = n }
+func (v *Wrap) SetBuf(b *util.Buffer) { v.b = b }
+func (v *Wrap) SetRef(line, char int, x, y int) {
 	v.startx, v.starty = x, y
 	v.startl, v.startc = line, char
 }
@@ -101,7 +103,7 @@ type WrapSurf struct {
 	chars PosMap // map[y]map[x]char#
 	xs    PosMap // map[line#]map[char#]x
 	ys    PosMap // map[line#]map[char#]y
-	b     *Buffer
+	b     *util.Buffer
 }
 
 func (c *WrapSurf) Rune(x, y int) rune {
@@ -134,7 +136,7 @@ func (c *WrapSurf) Y(line, char int) int {
 	return -1
 }
 
-func (c *WrapSurf) init(w, h int, b *Buffer, startl, starty int, tabw int) {
+func (c *WrapSurf) init(w, h int, b *util.Buffer, startl, starty int, tabw int) {
 	c.b = b
 	c.lines = PosMap{}
 	c.chars = PosMap{}
@@ -198,19 +200,19 @@ func (c *WrapSurf) init(w, h int, b *Buffer, startl, starty int, tabw int) {
 
 		if ch >= len(line) { // if we drew entire line
 			ch = 0
-			l++    // go to next line
+			l++ // go to next line
 		}
 	}
 }
 
-type LineNumView struct {
+type LineNum struct {
 	View
-	b       *Buffer
+	b       *util.Buffer
 	w, h    int
 	ndigits int
 }
 
-func (v *LineNumView) Render() Surface {
+func (v *LineNum) Render() Surface {
 	linenums := map[int]map[int]rune{}
 	v.ndigits = len(fmt.Sprint(v.b.Nlines())) + 1
 	surf := v.View.Render()
@@ -241,15 +243,15 @@ func (v *LineNumView) Render() Surface {
 	}
 }
 
-func (v *LineNumView) SetSize(w, h int) {
+func (v *LineNum) SetSize(w, h int) {
 	v.w, v.h = w, h
 	v.View.SetSize(w-v.ndigits, h)
 }
-func (v *LineNumView) SetBuf(b *Buffer) {
+func (v *LineNum) SetBuf(b *util.Buffer) {
 	v.b = b
 	v.View.SetBuf(b)
 }
-func (v *LineNumView) SetRef(line, char int, x, y int) {
+func (v *LineNum) SetRef(line, char int, x, y int) {
 	v.View.SetRef(line, char, x-v.ndigits, y)
 }
 

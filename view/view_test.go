@@ -1,8 +1,10 @@
-package main
+package view
 
 import (
 	"strings"
 	"testing"
+
+	"github.com/rwcarlsen/editor/util"
 )
 
 type tabbertest struct {
@@ -162,8 +164,8 @@ var viewtests = []viewtest{
 	},
 }
 
-func TestWrapView(t *testing.T) {
-	v := &WrapView{}
+func TestWrap(t *testing.T) {
+	v := &Wrap{}
 
 	for i, tst := range viewtests {
 		printtxt := strings.Replace(tst.text, "\n", "\\n", -1)
@@ -172,7 +174,7 @@ func TestWrapView(t *testing.T) {
 			"(l,c,x,y) = (%v,%v,%v,%v",
 			i, printtxt, tst.tabw, tst.w, tst.h, tst.l, tst.c, tst.x, tst.y)
 
-		b := NewBuffer([]byte(tst.text))
+		b := util.NewBuffer([]byte(tst.text))
 		v.SetBuf(b)
 		v.SetSize(tst.w, tst.h)
 		v.SetRef(tst.l, tst.c, tst.x, tst.y)
@@ -237,7 +239,7 @@ func TestWrapView(t *testing.T) {
 	}
 }
 
-func printSurf(t *testing.T, surf Surface, tst viewtest, b *Buffer) {
+func printSurf(t *testing.T, surf Surface, tst viewtest, b *util.Buffer) {
 	t.Log("")
 	for y := 0; y < tst.h; y++ {
 		got := ""
