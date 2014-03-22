@@ -37,6 +37,8 @@ func NewTabber(line []rune, tabw int) *Tabber {
 				t.XToCh[n+j] = i
 			}
 			n += t.Tabwidth
+			t.XToCh[n-1]=i
+			t.ChToX[i] = n-1
 		} else {
 			n++
 		}
@@ -136,6 +138,26 @@ func (c *WrapSurf) Y(line, char int) int {
 	return -1
 }
 
+// RenderLine renders the given line starting at the rune indexed by startch
+// and returns a slice of length w of indices that index into line for each x
+// tile. Indices of -1 indicate that no character is drawn.  nextch indexes the
+// first rune in line that didn't fit across the screen.
+func RenderLine(line []rune, startch int, w, tabw int) (chs []int, nextch int) {
+	chs = make([]int, w)
+	nextch = startch
+
+	t := NewTabber(line[startch:], tabw)
+	for x := 0; x < w; x++ {
+		if x < len(t.XToCh) {
+			chs[x] = startch + t.XToCh[x]
+			nextch = chs[x] + 1
+		} else {
+			chs[x] = -1
+		}
+	}
+	return chs, nextch
+}
+
 func (c *WrapSurf) init(w, h int, b *util.Buffer, startl, starty int, tabw int) {
 	c.b = b
 	c.lines = PosMap{}
@@ -144,7 +166,7 @@ func (c *WrapSurf) init(w, h int, b *util.Buffer, startl, starty int, tabw int) 
 	c.ys = PosMap{}
 
 	// figure out line+char for top left corner of canvas
-	l, ch := startl, 0
+	l, nextch := startl, 0
 	y := starty
 	for l > 0 && y > 0 {
 		l--
@@ -152,9 +174,9 @@ func (c *WrapSurf) init(w, h int, b *util.Buffer, startl, starty int, tabw int) 
 		t := NewTabber(line, tabw)
 		dy := t.VisLen/w + 1
 		y -= dy
-		ch = 0
+		nextch = 0
 		if y < 0 && t.VisLen > w {
-			ch = t.XToCh[w*-1*y]
+			nextch = t.XToCh[w*-1*y]
 		}
 	}
 
@@ -173,33 +195,25 @@ func (c *WrapSurf) init(w, h int, b *util.Buffer, startl, starty int, tabw int) 
 		if l < b.Nlines() {
 			line = b.Line(l)
 		}
-		startch := ch
-		t := NewTabber(line[startch:], tabw)
+
+		var chs []int
+		chs, nextch = RenderLine(line, nextch, w, tabw)
 		for x := 0; x < w; x++ {
-			if x < t.VisLen {
-				ch = startch + t.XToCh[x]
-			} else {
-				ch = len(line)
+			c.chars[y][x] = chs[x]
+			c.lines[y][x] = l
+			if l >= b.Nlines() {
+				c.lines[y][x] = -1
 			}
 
+			ch := chs[x]
 			if _, ok := c.xs[l][ch]; !ok {
 				c.xs[l][ch] = x
 				c.ys[l][ch] = y
 			}
-			c.chars[y][x] = ch
-			c.lines[y][x] = l
-
-			if l >= b.Nlines() {
-				c.lines[y][x] = -1
-			}
-			if x >= t.VisLen {
-				c.chars[y][x] = -1
-			}
 		}
-		ch++
 
-		if ch >= len(line) { // if we drew entire line
-			ch = 0
+		if nextch >= len(line) { // if we drew entire line
+			nextch = 0
 			l++ // go to next line
 		}
 	}
