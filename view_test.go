@@ -172,7 +172,8 @@ func TestWrapView(t *testing.T) {
 			"(l,c,x,y) = (%v,%v,%v,%v",
 			i, printtxt, tst.tabw, tst.w, tst.h, tst.l, tst.c, tst.x, tst.y)
 
-		v.SetBuf(NewBuffer([]byte(tst.text)))
+		b := NewBuffer([]byte(tst.text))
+		v.SetBuf(b)
 		v.SetSize(tst.w, tst.h)
 		v.SetRef(tst.l, tst.c, tst.x, tst.y)
 		v.SetTabwidth(tst.tabw)
@@ -184,7 +185,7 @@ func TestWrapView(t *testing.T) {
 				if got := surf.Char(x, y); ch != got {
 					t.Errorf("\t\t[**] for x,y = %v,%v: expected %v, got %v",
 						x, y, ch, got)
-					printSurf(t, surf, tst.w, tst.h)
+					printSurf(t, surf, tst, b)
 				} else {
 					t.Logf("\t\t[OK] for x,y = %v,%v: expected %v, got %v",
 						x, y, ch, got)
@@ -198,7 +199,7 @@ func TestWrapView(t *testing.T) {
 				if got := surf.Line(x, y); l != got {
 					t.Errorf("\t\t[**] for x,y = %v,%v: expected %v, got %v",
 						x, y, l, got)
-					printSurf(t, surf, tst.w, tst.h)
+					printSurf(t, surf, tst, b)
 				} else {
 					t.Logf("\t\t[OK] for x,y = %v,%v: expected %v, got %v",
 						x, y, l, got)
@@ -212,7 +213,7 @@ func TestWrapView(t *testing.T) {
 				if got := surf.X(l, ch); x != got {
 					t.Errorf("\t\t[**] for l,c = %v,%v: expected %v, got %v",
 						l, ch, x, got)
-					printSurf(t, surf, tst.w, tst.h)
+					printSurf(t, surf, tst, b)
 				} else {
 					t.Logf("\t\t[OK] for l,c = %v,%v: expected %v, got %v",
 						l, ch, x, got)
@@ -226,7 +227,7 @@ func TestWrapView(t *testing.T) {
 				if got := surf.Y(l, ch); y != got {
 					t.Errorf("\t\t[**] for l,c = %v,%v: expected %v, got %v",
 						l, ch, y, got)
-					printSurf(t, surf, tst.w, tst.h)
+					printSurf(t, surf, tst, b)
 				} else {
 					t.Logf("\t\t[OK] for l,c = %v,%v: expected %v, got %v",
 						l, ch, y, got)
@@ -236,14 +237,27 @@ func TestWrapView(t *testing.T) {
 	}
 }
 
-func printSurf(t *testing.T, surf Surface, w, h int) {
+func printSurf(t *testing.T, surf Surface, tst viewtest, b *Buffer) {
 	t.Log("")
-	for y := 0; y < h; y++ {
-		s := ""
-		for x := 0; x < w; x++ {
-			s += string(surf.Rune(x, y))
+	for y := 0; y < tst.h; y++ {
+		got := ""
+		expect := ""
+		pretxt := "   "
+		midtxt := "      "
+		if y == 0 {
+			pretxt = "got"
+			midtxt = "expect"
 		}
-		t.Logf("\t\t\t%v", s)
+		for x := 0; x < tst.w; x++ {
+			got += string(surf.Rune(x, y))
+			l, ch := tst.expectl[y][x], tst.expectch[y][x]
+			if l == -1 || ch == -1 {
+				expect += " "
+			} else {
+				expect += string(b.Rune(l, ch))
+			}
+		}
+		t.Logf("\t\t\t%v   |%v|   %v   |%v|", pretxt, got, midtxt, expect)
 	}
 	t.Log("")
 }
