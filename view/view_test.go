@@ -100,45 +100,45 @@ type viewtest struct {
 var viewtests = []viewtest{
 	viewtest{
 		name: "no wrap, full screen",
-		text: "abc\ndef",
-		tabw: 1, w: 3, h: 2,
-		l: 0, c: 0, x: 0, y: 0,
-		expectch: [][]int{
-			[]int{0, 1, 2},
-			[]int{0, 1, 2},
-		},
-		expectl: [][]int{
-			[]int{0, 0, 0},
-			[]int{1, 1, 1},
-		},
-		expectx: [][]int{
-			[]int{0, 1, 2},
-			[]int{0, 1, 2},
-		},
-		expecty: [][]int{
-			[]int{0, 0, 0},
-			[]int{1, 1, 1},
-		},
-	},
-	viewtest{
-		name: "no wrap, short lines",
-		text: "abc\ndef",
+		text: "abc\ndef\n",
 		tabw: 1, w: 4, h: 2,
 		l: 0, c: 0, x: 0, y: 0,
 		expectch: [][]int{
-			[]int{0, 1, 2, -1},
-			[]int{0, 1, 2, -1},
+			[]int{0, 1, 2, 3},
+			[]int{0, 1, 2, 3},
 		},
 		expectl: [][]int{
 			[]int{0, 0, 0, 0},
 			[]int{1, 1, 1, 1},
 		},
 		expectx: [][]int{
-			[]int{0, 1, 2},
+			[]int{0, 1, 2, 3},
+			[]int{0, 1, 2, 3},
+		},
+		expecty: [][]int{
+			[]int{0, 0, 0, 0},
+			[]int{1, 1, 1, 1},
+		},
+	},
+	viewtest{
+		name: "no wrap, short lines",
+		text: "abc\ndef",
+		tabw: 1, w: 5, h: 2,
+		l: 0, c: 0, x: 0, y: 0,
+		expectch: [][]int{
+			[]int{0, 1, 2, 3, -1},
+			[]int{0, 1, 2, -1, -1},
+		},
+		expectl: [][]int{
+			[]int{0, 0, 0, 0, 0},
+			[]int{1, 1, 1, 1, 1},
+		},
+		expectx: [][]int{
+			[]int{0, 1, 2, 3},
 			[]int{0, 1, 2},
 		},
 		expecty: [][]int{
-			[]int{0, 0, 0},
+			[]int{0, 0, 0, 0},
 			[]int{1, 1, 1},
 		},
 	},
@@ -149,7 +149,7 @@ var viewtests = []viewtest{
 		l: 0, c: 0, x: 0, y: 0,
 		expectch: [][]int{
 			[]int{0, 1, 2},
-			[]int{3, -1, -1},
+			[]int{3, 4, -1},
 			[]int{0, 1, -1},
 		},
 		expectl: [][]int{
@@ -158,11 +158,11 @@ var viewtests = []viewtest{
 			[]int{1, 1, 1},
 		},
 		expectx: [][]int{
-			[]int{0, 1, 2, 0},
+			[]int{0, 1, 2, 0, 1},
 			[]int{0, 1},
 		},
 		expecty: [][]int{
-			[]int{0, 0, 0, 1},
+			[]int{0, 0, 0, 1, 1},
 			[]int{2, 2},
 		},
 	},
@@ -190,8 +190,8 @@ var viewtests = []viewtest{
 		tabw: 1, w: 2, h: 3,
 		l: 0, c: 0, x: 0, y: 0,
 		expectch: [][]int{
+			[]int{0, 1},
 			[]int{0, -1},
-			[]int{-1, -1},
 			[]int{0, -1},
 		},
 		expectl: [][]int{
@@ -200,12 +200,12 @@ var viewtests = []viewtest{
 			[]int{2, 2},
 		},
 		expectx: [][]int{
+			[]int{0, 1},
 			[]int{0},
-			[]int{-1},
 			[]int{0},
 		},
 		expecty: [][]int{
-			[]int{0},
+			[]int{0, 0},
 			[]int{1},
 			[]int{2},
 		},
@@ -293,6 +293,8 @@ func testWrap(t *testing.T, i int) {
 
 func printSurf(t *testing.T, surf Surface, tst viewtest, b *util.Buffer) {
 	t.Log("")
+	tabrep := strings.Repeat("\\t", tst.tabw)
+	tabstr := "\\t" + strings.Repeat("--", tst.tabw-1)
 	for y := 0; y < tst.h; y++ {
 		got := ""
 		expect := ""
@@ -303,23 +305,27 @@ func printSurf(t *testing.T, surf Surface, tst viewtest, b *util.Buffer) {
 			midtxt = "got"
 		}
 		for x := 0; x < tst.w; x++ {
-			if r := surf.Rune(x, y); r != '\t' {
-				got += string(r) + " "
-			} else {
+			if r := surf.Rune(x, y); r == '\t' {
 				got += "\\t"
+			} else if r == '\n' {
+				got += "\\n"
+			} else {
+				got += string(r) + " "
 			}
 
 			l, ch := tst.expectl[y][x], tst.expectch[y][x]
 			if l == -1 || ch == -1 {
 				expect += "  "
-			} else if r := b.Rune(l, ch); r != '\t' {
-				expect += string(r) + " "
-			} else {
+			} else if r := b.Rune(l, ch); r == '\t' {
 				expect += "\\t"
+			} else if r == '\n' {
+				expect += "\\n"
+			} else {
+				expect += string(r) + " "
 			}
 		}
-		expect = strings.Replace(expect, "\t", " ", -1)
-		got = strings.Replace(got, "\t", " ", -1)
+		expect = strings.Replace(expect, tabrep, tabstr, -1)
+		got = strings.Replace(got, tabrep, tabstr, -1)
 		t.Logf("\t%v   |%v|   %v   |%v|", pretxt, expect, midtxt, got)
 	}
 	t.Log("")
