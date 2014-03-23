@@ -85,6 +85,83 @@ func TestTabber(t *testing.T) {
 	}
 }
 
+type renderlinetest struct {
+	line             string
+	startch, w, tabw int
+	expectchs        []int
+	expectnextch     int
+}
+
+var renderlinetests = []renderlinetest{
+	renderlinetest{
+		line:    "abc",
+		startch: 0, w: 3, tabw: 1,
+		expectchs:    []int{0, 1, 2},
+		expectnextch: 3,
+	},
+	renderlinetest{
+		line:    "",
+		startch: 0, w: 3, tabw: 1,
+		expectchs:    []int{-1, -1, -1},
+		expectnextch: 0,
+	},
+	renderlinetest{
+		line:    "abc",
+		startch: 0, w: 5, tabw: 1,
+		expectchs:    []int{0, 1, 2, -1, -1},
+		expectnextch: 3,
+	},
+	renderlinetest{
+		line:    "abc\t",
+		startch: 0, w: 6, tabw: 3,
+		expectchs:    []int{0, 1, 2, 3, 3, 3},
+		expectnextch: 4,
+	},
+	renderlinetest{
+		line:    "abc\t",
+		startch: 0, w: 5, tabw: 3,
+		expectchs:    []int{0, 1, 2, 3, 3},
+		expectnextch: 4,
+	},
+	renderlinetest{
+		line:    "ab\tc",
+		startch: 0, w: 5, tabw: 3,
+		expectchs:    []int{0, 1, 2, 2, 2},
+		expectnextch: 3,
+	},
+	renderlinetest{
+		line:    "a\tb\tc",
+		startch: 0, w: 7, tabw: 3,
+		expectchs:    []int{0, 1, 1, 1, 2, 3, 3},
+		expectnextch: 4,
+	},
+}
+
+func TestRenderLine(t *testing.T) {
+	for i, tst := range renderlinetests {
+		str := strings.Replace(tst.line, "\t", "\\t", -1)
+		t.Logf("* test %v: line='%v', startch=%v, w=%v, tabw=%v",
+			i, str, tst.startch, tst.w, tst.tabw)
+
+		chs, nextch := RenderLine([]rune(tst.line), tst.startch, tst.w, tst.tabw)
+		if nextch != tst.expectnextch {
+			t.Errorf("\texpected nextch = %+v, got %+v", tst.expectnextch, nextch)
+		}
+		if len(chs) != len(tst.expectchs) {
+			t.Fatalf("\texpected chs = %+v, got %+v", tst.expectchs, chs)
+		} else {
+			for j := range chs {
+				if chs[j] != tst.expectchs[j] {
+					t.Fatalf("\texpected chs = %+v, got %+v", tst.expectchs, chs)
+				}
+			}
+		}
+		if !t.Failed() {
+			t.Logf("\tPASSED")
+		}
+	}
+}
+
 type viewtest struct {
 	name       string
 	text       string
@@ -330,81 +407,3 @@ func printSurf(t *testing.T, surf Surface, tst viewtest, b *util.Buffer) {
 	}
 	t.Log("")
 }
-
-type renderlinetest struct {
-	line             string
-	startch, w, tabw int
-	expectchs        []int
-	expectnextch     int
-}
-
-var renderlinetests = []renderlinetest{
-	renderlinetest{
-		line:    "abc",
-		startch: 0, w: 3, tabw: 1,
-		expectchs:    []int{0, 1, 2},
-		expectnextch: 3,
-	},
-	renderlinetest{
-		line:    "",
-		startch: 0, w: 3, tabw: 1,
-		expectchs:    []int{-1, -1, -1},
-		expectnextch: 0,
-	},
-	renderlinetest{
-		line:    "abc",
-		startch: 0, w: 5, tabw: 1,
-		expectchs:    []int{0, 1, 2, -1, -1},
-		expectnextch: 3,
-	},
-	renderlinetest{
-		line:    "abc\t",
-		startch: 0, w: 6, tabw: 3,
-		expectchs:    []int{0, 1, 2, 3, 3, 3},
-		expectnextch: 4,
-	},
-	renderlinetest{
-		line:    "abc\t",
-		startch: 0, w: 5, tabw: 3,
-		expectchs:    []int{0, 1, 2, 3, 3},
-		expectnextch: 4,
-	},
-	renderlinetest{
-		line:    "ab\tc",
-		startch: 0, w: 5, tabw: 3,
-		expectchs:    []int{0, 1, 2, 2, 2},
-		expectnextch: 3,
-	},
-	renderlinetest{
-		line:    "a\tb\tc",
-		startch: 0, w: 7, tabw: 3,
-		expectchs:    []int{0, 1, 1, 1, 2, 3, 3},
-		expectnextch: 4,
-	},
-}
-
-func TestRenderLine(t *testing.T) {
-	for i, tst := range renderlinetests {
-		str := strings.Replace(tst.line, "\t", "\\t", -1)
-		t.Logf("* test %v: line='%v', startch=%v, w=%v, tabw=%v",
-			i, str, tst.startch, tst.w, tst.tabw)
-
-		chs, nextch := RenderLine([]rune(tst.line), tst.startch, tst.w, tst.tabw)
-		if nextch != tst.expectnextch {
-			t.Errorf("\texpected nextch = %+v, got %+v", tst.expectnextch, nextch)
-		}
-		if len(chs) != len(tst.expectchs) {
-			t.Fatalf("\texpected chs = %+v, got %+v", tst.expectchs, chs)
-		} else {
-			for j := range chs {
-				if chs[j] != tst.expectchs[j] {
-					t.Fatalf("\texpected chs = %+v, got %+v", tst.expectchs, chs)
-				}
-			}
-		}
-		if !t.Failed() {
-			t.Logf("\tPASSED")
-		}
-	}
-}
-

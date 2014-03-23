@@ -37,8 +37,8 @@ func NewTabber(line []rune, tabw int) *Tabber {
 				t.XToCh[n+j] = i
 			}
 			n += t.Tabwidth
-			t.XToCh[n-1]=i
-			t.ChToX[i] = n-1
+			t.XToCh[n-1] = i
+			t.ChToX[i] = n - 1
 		} else {
 			n++
 		}
