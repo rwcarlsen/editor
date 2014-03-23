@@ -19,7 +19,7 @@ type Session struct {
 	File       string
 	mode       Mode
 	w, h       int // size of terminal window
-	buf        *util.Buffer
+	Buf        *util.Buffer
 	View       view.View
 	CursorL    int // cursor line#
 	CursorC    int // cursor char#
@@ -29,14 +29,14 @@ type Session struct {
 }
 
 func (s *Session) Run() error {
-	s.mode = &ModeInsert{}
+	s.mode = &ModeEdit{}
 	data, err := ioutil.ReadFile(s.File)
 	if err != nil {
 		return err
 	}
-	s.buf = util.NewBuffer(data)
+	s.Buf = util.NewBuffer(data)
 	s.w, s.h = termbox.Size()
-	s.View.SetBuf(s.buf)
+	s.View.SetBuf(s.Buf)
 	s.View.SetSize(s.w, s.h)
 	s.View.SetTabwidth(s.Tabwidth)
 
@@ -63,7 +63,7 @@ func (s *Session) Run() error {
 }
 
 func (s *Session) MovCursorX(n int) {
-	line := s.buf.Line(s.CursorL)
+	line := s.Buf.Line(s.CursorL)
 	s.CursorC = util.Min(s.CursorC+n, len(line)-1)
 	s.CursorC = util.Max(s.CursorC, 0)
 }
@@ -72,12 +72,11 @@ func (s *Session) MovCursorY(n int) {
 	s.View.SetRef(s.CursorL, 0, 0, s.ypivot)
 	surf := s.View.Render()
 
-	if s.CursorL+n >= s.buf.Nlines() {
-		s.CursorL = s.buf.Nlines() - 1
-	} else if s.CursorL+n < 0 {
+	s.CursorL += n
+	if s.CursorL >= s.Buf.Nlines() {
+		s.CursorL = s.Buf.Nlines() - 1
+	} else if s.CursorL < 0 {
 		s.CursorL = 0
-	} else {
-		s.CursorL += n
 	}
 
 	// keep x cursor pos on text for new line
@@ -93,22 +92,22 @@ func (s *Session) MovCursorY(n int) {
 
 func (s *Session) Newline() {
 	l, c := s.CursorL, s.CursorC
-	s.buf.Insert(s.buf.Offset(l, c), []rune{'\n'})
+	s.Buf.Insert(s.Buf.Offset(l, c), []rune{'\n'})
 	s.MovCursorY(1)
 	s.CursorC = 0
 }
 
 func (s *Session) Backspace() {
 	l, c := s.CursorL, s.CursorC
-	offset := s.buf.Offset(l, c)
-	s.buf.Delete(offset-1, offset)
-	s.CursorL, s.CursorC = s.buf.Pos(offset - 1)
+	offset := s.Buf.Offset(l, c)
+	s.Buf.Delete(offset-1, offset)
+	s.CursorL, s.CursorC = s.Buf.Pos(offset - 1)
 	s.MovCursorY(0) // force refresh of scroll reference
 }
 
 func (s *Session) Insert(chs ...rune) {
 	l, c := s.CursorL, s.CursorC
-	s.buf.Insert(s.buf.Offset(l, c), chs)
+	s.Buf.Insert(s.Buf.Offset(l, c), chs)
 	s.CursorC += len(chs)
 }
 

@@ -40,7 +40,68 @@ func (m *ModeInsert) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 	case termbox.KeyArrowRight:
 		s.MovCursorX(1)
 	case termbox.KeyCtrlS:
-		err := ioutil.WriteFile(s.File, s.buf.Bytes(), 0666)
+		err := ioutil.WriteFile(s.File, s.Buf.Bytes(), 0666)
+		if err != nil {
+			return m, err
+		}
+	case termbox.KeyEsc:
+		return &ModeEdit{}, nil
+	case termbox.KeyCtrlQ:
+		return m, ErrQuit
+	}
+	return m, nil
+}
+
+type ModeEdit struct{
+	s *Session
+	prevkey rune
+}
+
+func (m *ModeEdit) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
+	m.s = s
+	if ev.Ch != 0 {
+		switch ev.Ch {
+		case 'i':
+			return &ModeInsert{}, nil
+		case 'j':
+			s.MovCursorY(1)
+		case 'k':
+			s.MovCursorY(-1)
+		case 'l':
+			s.MovCursorX(1)
+		case 'h':
+			s.MovCursorX(-1)
+		case 'g':
+			if m.prevkey == 'g' {
+				m.prevkey = 0
+				s.MovCursorX(-s.CursorC)
+				s.MovCursorY(-s.CursorL)
+			} else {
+				m.prevkey = 'g'
+			}
+		case 'G':
+			s.MovCursorX(-s.CursorC)
+			s.MovCursorY(s.Buf.Nlines()-1-s.CursorL)
+		}
+	}
+
+	switch ev.Key {
+	case termbox.KeyEnter:
+		s.MovCursorY(1)
+	case termbox.KeyBackspace, termbox.KeyBackspace2:
+		s.MovCursorX(-1)
+	case termbox.KeySpace:
+		s.MovCursorX(1)
+	case termbox.KeyArrowUp:
+		s.MovCursorY(-1)
+	case termbox.KeyArrowDown:
+		s.MovCursorY(1)
+	case termbox.KeyArrowLeft:
+		s.MovCursorX(-1)
+	case termbox.KeyArrowRight:
+		s.MovCursorX(1)
+	case termbox.KeyCtrlS:
+		err := ioutil.WriteFile(s.File, s.Buf.Bytes(), 0666)
 		if err != nil {
 			return m, err
 		}
