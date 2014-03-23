@@ -1,4 +1,4 @@
-package main
+package util
 
 import (
 	"strings"
@@ -25,7 +25,7 @@ func (b *Buffer) Line(n int) []rune {
 }
 
 func (b *Buffer) updLines() {
-	slines := strings.Split(string(b.data), "\n")
+	slines := strings.SplitAfter(string(b.data), "\n")
 	b.lines = make([][]rune, len(slines))
 	for i, l := range slines {
 		b.lines[i] = []rune(l)
@@ -60,12 +60,25 @@ func (b *Buffer) Pos(offset int) (line, char int) {
 func (b *Buffer) Offset(line, char int) int {
 	offset := 0
 	for _, line := range b.lines[:line] {
-		offset += len(line) + 1 // +1 for newline
+		offset += len(line)
 	}
-	offset += min(char, len(b.lines[line]))
-	return offset
+	return offset + char
 }
 
 func (b *Buffer) Bytes() []byte {
 	return []byte(string(b.data))
+}
+
+func Min(x, y int) int {
+	if x < y {
+		return x
+	}
+	return y
+}
+
+func Max(x, y int) int {
+	if x > y {
+		return x
+	}
+	return y
 }
