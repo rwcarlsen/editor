@@ -3,7 +3,6 @@ package session
 import (
 	"fmt"
 	"io/ioutil"
-	"strings"
 
 	termbox "github.com/nsf/termbox-go"
 	"github.com/rwcarlsen/editor/util"
@@ -12,8 +11,13 @@ import (
 
 var ErrQuit = fmt.Errorf("Quit")
 
+type Mode interface {
+	HandleKey(*Session, termbox.Event) (Mode, error)
+}
+
 type Session struct {
 	File       string
+	mode       Mode
 	w, h       int // size of terminal window
 	buf        *util.Buffer
 	View       view.View
@@ -25,6 +29,7 @@ type Session struct {
 }
 
 func (s *Session) Run() error {
+	s.mode = &ModeInsert{}
 	data, err := ioutil.ReadFile(s.File)
 	if err != nil {
 		return err
@@ -43,7 +48,8 @@ func (s *Session) Run() error {
 		ev := termbox.PollEvent()
 		switch ev.Type {
 		case termbox.EventKey:
-			if err := s.HandleKey(ev); err != nil {
+			s.mode, err = s.mode.HandleKey(s, ev)
+			if err != nil {
 				return err
 			}
 		case termbox.EventResize:
@@ -54,44 +60,6 @@ func (s *Session) Run() error {
 			return ev.Err
 		}
 	}
-}
-
-func (s *Session) HandleKey(ev termbox.Event) error {
-	if ev.Ch != 0 {
-		s.Insert(ev.Ch)
-		return nil
-	}
-
-	switch ev.Key {
-	case termbox.KeyEnter:
-		s.Newline()
-	case termbox.KeyBackspace, termbox.KeyBackspace2:
-		s.Backspace()
-	case termbox.KeySpace:
-		s.Insert(' ')
-	case termbox.KeyTab:
-		if s.ExpandTabs {
-			s.Insert([]rune(strings.Repeat(" ", s.Tabwidth))...)
-		} else {
-			s.Insert('\t')
-		}
-	case termbox.KeyArrowUp:
-		s.MovCursorY(-1)
-	case termbox.KeyArrowDown:
-		s.MovCursorY(1)
-	case termbox.KeyArrowLeft:
-		s.MovCursorX(-1)
-	case termbox.KeyArrowRight:
-		s.MovCursorX(1)
-	case termbox.KeyCtrlS:
-		err := ioutil.WriteFile(s.File, s.buf.Bytes(), 0666)
-		if err != nil {
-			return err
-		}
-	case termbox.KeyEsc:
-		return ErrQuit
-	}
-	return nil
 }
 
 func (s *Session) MovCursorX(n int) {
