@@ -164,7 +164,7 @@ func RenderLine(line []rune, startch int, w, tabw int) (chs []int, nextch int) {
 	return chs, nextch
 }
 
-func FindStart(b *util.Buffer, w, startl, starty int, tabw int) (line, char int) {
+func FindStart(b *util.Buffer, w int, startl, starty int, tabw int) (line, char int) {
 	line, char = startl, 0
 	y := starty
 	for line > 0 && y > 0 {

@@ -83,6 +83,11 @@ func (s *Session) HandleKey(ev termbox.Event) error {
 		s.MovCursorX(-1)
 	case termbox.KeyArrowRight:
 		s.MovCursorX(1)
+	case termbox.KeyCtrlS:
+		err := ioutil.WriteFile(s.File, s.buf.Bytes(), 0666)
+		if err != nil {
+			return err
+		}
 	case termbox.KeyEsc:
 		return ErrQuit
 	}
