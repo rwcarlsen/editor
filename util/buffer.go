@@ -45,7 +45,7 @@ func (b *Buffer) Nlines() int {
 	return len(b.lines)
 }
 
-func (b *Buffer) Insert(offset int, rs []rune) {
+func (b *Buffer) Insert(offset int, rs ...rune) {
 	b.data = append(b.data[:offset], append(rs, b.data[offset:]...)...)
 	b.updLines()
 }

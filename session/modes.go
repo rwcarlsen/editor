@@ -56,21 +56,23 @@ func (m *ModeInsert) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 
 type ModeSearch struct{
 	s *Session
-	text []rune
 	view view.View
 	b *util.Buffer
+	pos int
 }
 
-func (m *ModeEdit) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
+func (m *ModeSearch) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 	if m.s == nil {
-		m.b = util.NewBuffer([]byte)
+		m.b = util.NewBuffer([]byte{})
+		m.view = &view.Wrap{}
 		m.view.SetBuf(m.b)
-		m.view.SetSize(s.W, s.H)
-		m.view.SetTabwidth(s.Tabwidth)
+		m.view.SetSize(s.W, 1)
+		m.view.SetTabwidth(1)
 	}
 
 	if ev.Ch != 0 {
-		text = append(text, ev.Ch)
+		b.Insert(m.pos, ev.Ch)
+		m.pos++
 	}
 }
 

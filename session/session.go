@@ -93,7 +93,7 @@ func (s *Session) MovCursorY(n int) {
 
 func (s *Session) Newline() {
 	l, c := s.CursorL, s.CursorC
-	s.Buf.Insert(s.Buf.Offset(l, c), []rune{'\n'})
+	s.Buf.Insert(s.Buf.Offset(l, c), '\n')
 	s.MovCursorY(1)
 	s.CursorC = 0
 }
@@ -108,7 +108,7 @@ func (s *Session) Backspace() {
 
 func (s *Session) Insert(chs ...rune) {
 	l, c := s.CursorL, s.CursorC
-	s.Buf.Insert(s.Buf.Offset(l, c), chs)
+	s.Buf.Insert(s.Buf.Offset(l, c), chs...)
 	s.CursorC += len(chs)
 }
 
