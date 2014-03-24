@@ -45,6 +45,7 @@ func (m *ModeInsert) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 			return m, err
 		}
 	case termbox.KeyEsc:
+		s.MovCursorX(-1)
 		return &ModeEdit{}, nil
 	case termbox.KeyCtrlQ:
 		return m, ErrQuit
