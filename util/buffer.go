@@ -30,8 +30,14 @@ func (b *Buffer) updLines() {
 	for i, l := range slines {
 		b.lines[i] = []rune(l)
 	}
-	if i := len(b.lines)-1; len(b.lines[i]) == 0 {
-		b.lines = b.lines[:i]
+	if len(b.lines) > 0 {
+		i := len(b.lines)-1
+		l := b.lines[i]
+		if len(l) > 0 && l[len(l)-1] != '\n' {
+			b.lines[i] = append(l, '\n')
+		} else if len(b.lines[i]) == 0 {
+			b.lines = b.lines[:i]
+		}
 	}
 }
 

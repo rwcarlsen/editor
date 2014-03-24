@@ -218,7 +218,7 @@ var viewtests = []viewtest{
 	},
 	viewtest{
 		name: "no wrap, short lines",
-		text: "abc\ndef",
+		text: "abc\nde\n",
 		tabw: 1, w: 5, h: 2,
 		l: 0, c: 0, x: 0, y: 0,
 		expectch: [][]int{
@@ -240,7 +240,7 @@ var viewtests = []viewtest{
 	},
 	viewtest{
 		name: "simple wrap",
-		text: "abcd\nef",
+		text: "abcd\ne\n",
 		tabw: 1, w: 3, h: 3,
 		l: 0, c: 0, x: 0, y: 0,
 		expectch: [][]int{
@@ -264,31 +264,31 @@ var viewtests = []viewtest{
 	},
 	viewtest{
 		name: "no wrap, simple tab",
-		text: "a\tb",
-		tabw: 2, w: 4, h: 1,
+		text: "a\tb\n",
+		tabw: 2, w: 5, h: 1,
 		l: 0, c: 0, x: 0, y: 0,
 		expectch: [][]int{
-			[]int{0, 1, 1, 2},
+			[]int{0, 1, 1, 2, 3},
 		},
 		expectl: [][]int{
-			[]int{0, 0, 0, 0},
+			[]int{0, 0, 0, 0, 0},
 		},
 		expectx: [][]int{
-			[]int{0, 2, 3},
+			[]int{0, 2, 3, 4},
 		},
 		expecty: [][]int{
-			[]int{0, 0, 0},
+			[]int{0, 0, 0, 0},
 		},
 	},
 	viewtest{
 		name: "no wrap, empty line",
-		text: "a\n\nb",
+		text: "a\n\nb\n",
 		tabw: 1, w: 2, h: 3,
 		l: 0, c: 0, x: 0, y: 0,
 		expectch: [][]int{
 			[]int{0, 1},
 			[]int{0, -1},
-			[]int{0, -1},
+			[]int{0, 1},
 		},
 		expectl: [][]int{
 			[]int{0, 0},
@@ -298,12 +298,12 @@ var viewtests = []viewtest{
 		expectx: [][]int{
 			[]int{0, 1},
 			[]int{0},
-			[]int{0},
+			[]int{0, 1},
 		},
 		expecty: [][]int{
 			[]int{0, 0},
 			[]int{1},
-			[]int{2},
+			[]int{2, 2},
 		},
 	},
 }

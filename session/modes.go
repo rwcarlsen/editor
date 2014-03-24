@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 
 	termbox "github.com/nsf/termbox-go"
+	"github.com/rwcarlsen/editor/view"
 )
 
 type ModeInsert struct{
@@ -51,6 +52,26 @@ func (m *ModeInsert) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 		return m, ErrQuit
 	}
 	return m, nil
+}
+
+type ModeSearch struct{
+	s *Session
+	text []rune
+	view view.View
+	b *util.Buffer
+}
+
+func (m *ModeEdit) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
+	if m.s == nil {
+		m.b = util.NewBuffer([]byte)
+		m.view.SetBuf(m.b)
+		m.view.SetSize(s.W, s.H)
+		m.view.SetTabwidth(s.Tabwidth)
+	}
+
+	if ev.Ch != 0 {
+		text = append(text, ev.Ch)
+	}
 }
 
 type ModeEdit struct{
