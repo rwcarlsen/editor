@@ -82,6 +82,7 @@ func (m *ModeEdit) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 		case 'G':
 			s.MovCursorX(-s.CursorC)
 			s.MovCursorY(s.Buf.Nlines()-1-s.CursorL)
+			s.Ypivot=s.H-1
 		}
 	}
 

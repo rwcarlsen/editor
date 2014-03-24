@@ -18,14 +18,14 @@ type Mode interface {
 type Session struct {
 	File       string
 	mode       Mode
-	w, h       int // size of terminal window
+	W, H       int // size of terminal window
 	Buf        *util.Buffer
 	View       view.View
 	CursorL    int // cursor line#
 	CursorC    int // cursor char#
 	ExpandTabs bool
 	Tabwidth   int
-	ypivot     int
+	Ypivot     int
 }
 
 func (s *Session) Run() error {
@@ -35,9 +35,10 @@ func (s *Session) Run() error {
 		return err
 	}
 	s.Buf = util.NewBuffer(data)
-	s.w, s.h = termbox.Size()
+	s.W, s.H = termbox.Size()
+	s.H--
 	s.View.SetBuf(s.Buf)
-	s.View.SetSize(s.w, s.h)
+	s.View.SetSize(s.W, s.H)
 	s.View.SetTabwidth(s.Tabwidth)
 
 	for {
@@ -53,8 +54,8 @@ func (s *Session) Run() error {
 				return err
 			}
 		case termbox.EventResize:
-			s.w, s.h = ev.Width, ev.Height
-			s.View.SetSize(s.w, s.h)
+			s.W, s.H = ev.Width, ev.Height-1
+			s.View.SetSize(s.W, s.H)
 		case termbox.EventMouse:
 		case termbox.EventError:
 			return ev.Err
@@ -69,7 +70,7 @@ func (s *Session) MovCursorX(n int) {
 }
 
 func (s *Session) MovCursorY(n int) {
-	s.View.SetRef(s.CursorL, 0, 0, s.ypivot)
+	s.View.SetRef(s.CursorL, 0, 0, s.Ypivot)
 	surf := s.View.Render()
 
 	s.CursorL += n
@@ -86,7 +87,7 @@ func (s *Session) MovCursorY(n int) {
 	// move the cursor draw location to that screen loc
 	// (i.e. don't scroll the screen)
 	if view.Contains(surf, s.CursorL, s.CursorC) {
-		s.ypivot = surf.Y(s.CursorL, s.CursorC)
+		s.Ypivot = surf.Y(s.CursorL, s.CursorC)
 	}
 }
 
@@ -112,7 +113,7 @@ func (s *Session) Insert(chs ...rune) {
 }
 
 func (s *Session) Draw() {
-	s.View.SetRef(s.CursorL, 0, 0, s.ypivot)
+	s.View.SetRef(s.CursorL, 0, 0, s.Ypivot)
 	surf := s.View.Render()
 
 	// draw cursor
@@ -120,8 +121,8 @@ func (s *Session) Draw() {
 	termbox.SetCursor(x, y)
 
 	// draw content
-	for y := 0; y < s.h; y++ {
-		for x := 0; x < s.w; x++ {
+	for y := 0; y < s.H; y++ {
+		for x := 0; x < s.W; x++ {
 			termbox.SetCell(x, y, surf.Rune(x, y), 0, 0)
 		}
 	}
