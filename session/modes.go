@@ -78,8 +78,17 @@ func (m *ModeSearch) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 	}
 	switch ev.Key {
 	case termbox.KeyEnter:
-		// execute the search
-		m.b.Bytes()
+		re, err := regexp.Compile(string(m.b.Bytes()))
+		if err != nil {
+			msg := err.Error()
+			for i, ch := range msg {
+				termbox.SetCell(i, s.H, ch, 0, 0)
+			}
+			return &ModeEdit{}, nil
+		}
+
+		matches := re.FindAllIndex(s.Buf.Bytes())
+		return &ModeEdit{Search: matches, SearchN: 0}, nil
 	case termbox.KeyBackspace, termbox.KeyBackspace2:
 		m.b.Delete(m.pos, -1)
 		m.pos--
@@ -95,12 +104,27 @@ func (m *ModeSearch) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 
 type ModeEdit struct{
 	s *Session
+	Search [][]int
+	SearchN int
 	prevkey rune
 }
 
 func (m *ModeEdit) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 	m.s = s
-	if ev.Ch != 0 {
+
+	switch m.prevkey {
+	case 'g':
+		switch ev.Ch {
+		case 'g':
+			if m.prevkey == 'g' {
+				m.prevkey = 0
+				s.MovCursorX(-s.CursorC)
+				s.MovCursorY(-s.CursorL)
+			}
+		default:
+			m.prevkey = 0
+		}
+	case 0:
 		switch ev.Ch {
 		case 'i':
 			return &ModeInsert{}, nil
@@ -127,6 +151,12 @@ func (m *ModeEdit) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 		case '/':
 			termbox.SetCell(0, s.H, '/', 0, 0)
 			return &ModeSearch{}, nil
+		case 'n':
+			if m.Search == nil {
+				break
+			}
+			s.MovCursorX()
+			s.MovCursorY()
 		}
 	}
 
