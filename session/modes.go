@@ -106,6 +106,9 @@ func (m *ModeSearch) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 			s.MovCursorX(-s.CursorC + c)
 		}
 		return &ModeEdit{Search: matches, SearchN: n}, nil
+	case termbox.KeySpace:
+		m.b.Insert(m.pos, ' ')
+		m.pos++
 	case termbox.KeyBackspace, termbox.KeyBackspace2:
 		m.b.Delete(m.pos, -1)
 		m.pos--
