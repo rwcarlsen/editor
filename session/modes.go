@@ -6,6 +6,7 @@ import (
 
 	termbox "github.com/nsf/termbox-go"
 	"github.com/rwcarlsen/editor/view"
+	"github.com/rwcarlsen/editor/util"
 )
 
 type ModeInsert struct{
@@ -71,15 +72,15 @@ func (m *ModeSearch) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 	}
 
 	if ev.Ch != 0 {
-		b.Insert(m.pos, ev.Ch)
+		m.b.Insert(m.pos, ev.Ch)
 		m.pos++
 	}
 	switch ev.Key {
 	case termbox.KeyEnter:
 		// execute the search
 	case termbox.KeyBackspace, termbox.KeyBackspace2:
+		m.b.Delete(m.pos, -1)
 		m.pos--
-		b.Delete(m.pos, m.pos+1)
 	case termbox.KeyEsc:
 		return &ModeEdit{}, nil
 	}
