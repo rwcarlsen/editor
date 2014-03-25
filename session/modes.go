@@ -1,15 +1,16 @@
 package session
 
 import (
-	"strings"
 	"io/ioutil"
+	"regexp"
+	"strings"
 
 	termbox "github.com/nsf/termbox-go"
-	"github.com/rwcarlsen/editor/view"
 	"github.com/rwcarlsen/editor/util"
+	"github.com/rwcarlsen/editor/view"
 )
 
-type ModeInsert struct{
+type ModeInsert struct {
 	s *Session
 }
 
@@ -55,11 +56,11 @@ func (m *ModeInsert) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 	return m, nil
 }
 
-type ModeSearch struct{
-	s *Session
+type ModeSearch struct {
+	s    *Session
 	view view.View
-	b *util.Buffer
-	pos int
+	b    *util.Buffer
+	pos  int
 }
 
 func (m *ModeSearch) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
@@ -87,8 +88,24 @@ func (m *ModeSearch) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 			return &ModeEdit{}, nil
 		}
 
-		matches := re.FindAllIndex(s.Buf.Bytes())
-		return &ModeEdit{Search: matches, SearchN: 0}, nil
+		matches := re.FindAllIndex(s.Buf.Bytes(), -1)
+		n := 0
+		if len(matches) > 0 {
+			cursor := s.Buf.Offset(s.CursorL, s.CursorC)
+			for i, match := range matches {
+				offset := match[0]
+				if offset >= cursor {
+					n = i
+					break
+				}
+
+			}
+			offset := matches[n][0]
+			l, c := s.Buf.Pos(offset)
+			s.MovCursorY(-s.CursorL + l)
+			s.MovCursorX(-s.CursorC + c)
+		}
+		return &ModeEdit{Search: matches, SearchN: n}, nil
 	case termbox.KeyBackspace, termbox.KeyBackspace2:
 		m.b.Delete(m.pos, -1)
 		m.pos--
@@ -102,9 +119,9 @@ func (m *ModeSearch) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 	return m, nil
 }
 
-type ModeEdit struct{
-	s *Session
-	Search [][]int
+type ModeEdit struct {
+	s       *Session
+	Search  [][]int
 	SearchN int
 	prevkey rune
 }
@@ -146,17 +163,21 @@ func (m *ModeEdit) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 			}
 		case 'G':
 			s.MovCursorX(-s.CursorC)
-			s.MovCursorY(s.Buf.Nlines()-1-s.CursorL)
-			s.Ypivot=s.H-1
+			s.MovCursorY(s.Buf.Nlines() - 1 - s.CursorL)
+			s.Ypivot = s.H - 1
 		case '/':
 			termbox.SetCell(0, s.H, '/', 0, 0)
 			return &ModeSearch{}, nil
 		case 'n':
-			if m.Search == nil {
+			if len(m.Search) == 0 {
 				break
+			} else if m.SearchN++; m.SearchN >= len(m.Search) {
+				m.SearchN = 0
 			}
-			s.MovCursorX()
-			s.MovCursorY()
+			offset := m.Search[m.SearchN][0]
+			l, c := s.Buf.Pos(offset)
+			s.MovCursorY(-s.CursorL + l)
+			s.MovCursorX(-s.CursorC + c)
 		}
 	}
 
@@ -187,4 +208,3 @@ func (m *ModeEdit) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 	}
 	return m, nil
 }
-
