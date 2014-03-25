@@ -121,9 +121,5 @@ func (s *Session) Draw() {
 	termbox.SetCursor(x, y)
 
 	// draw content
-	for y := 0; y < s.H; y++ {
-		for x := 0; x < s.W; x++ {
-			termbox.SetCell(x, y, surf.Rune(x, y), 0, 0)
-		}
-	}
+	view.Draw(surf, 0, 0)
 }

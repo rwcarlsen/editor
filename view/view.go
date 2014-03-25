@@ -22,6 +22,14 @@ type Surface interface {
 	Y(line, char int) int
 }
 
+func Draw(s Surface, x, y int) {
+	for y := 0; y < s.H; y++ {
+		for x := 0; x < s.W; x++ {
+			termbox.SetCell(x, y, surf.Rune(x, y), 0, 0)
+		}
+	}
+}
+
 func Contains(s Surface, line, char int) bool {
 	x, y := RenderPos(s, line, char)
 	return x != -1 && y != -1

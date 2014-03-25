@@ -74,6 +74,16 @@ func (m *ModeSearch) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 		b.Insert(m.pos, ev.Ch)
 		m.pos++
 	}
+	switch ev.Key {
+	case termbox.KeyEnter:
+		// execute the search
+	case termbox.KeyBackspace, termbox.KeyBackspace2:
+		m.pos--
+		b.Delete(m.pos, m.pos+1)
+	case termbox.KeyEsc:
+		return &ModeEdit{}, nil
+	}
+	return m, nil
 }
 
 type ModeEdit struct{
@@ -130,6 +140,8 @@ func (m *ModeEdit) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 		if err != nil {
 			return m, err
 		}
+	case termbox.KeyEsc:
+		m.prevkey = 0
 	case termbox.KeyCtrlQ:
 		return m, ErrQuit
 	}
