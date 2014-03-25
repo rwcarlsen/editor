@@ -45,6 +45,7 @@ func (v *LineNum) Render() Surface {
 	}
 }
 
+func (v *Wrap) Size() (w, h int) { return v.w, v.h }
 func (v *LineNum) SetSize(w, h int) {
 	v.w, v.h = w, h
 	v.View.SetSize(w-v.ndigits, h)

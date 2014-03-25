@@ -3,6 +3,7 @@ package view
 import (
 	"strings"
 
+	termbox "github.com/nsf/termbox-go"
 	"github.com/rwcarlsen/editor/util"
 )
 
@@ -20,6 +21,16 @@ type Surface interface {
 	Rune(x, y int) rune
 	X(line, char int) int
 	Y(line, char int) int
+	Size() (w, h int)
+}
+
+func Draw(s Surface, xorigin, yorigin int) {
+	w, h := s.Size()
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			termbox.SetCell(xorigin+x, yorigin+y, s.Rune(x, y), 0, 0)
+		}
+	}
 }
 
 func Contains(s Surface, line, char int) bool {
@@ -65,7 +76,10 @@ type WrapSurf struct {
 	xs    PosMap // map[line#]map[char#]x
 	ys    PosMap // map[line#]map[char#]y
 	b     *util.Buffer
+	w, h int
 }
+
+func (c *WrapSurf) Size() (w, h int)      { return c.w, c.h }
 
 func (c *WrapSurf) Rune(x, y int) rune {
 	l, ch := DataPos(c, x, y)
@@ -98,6 +112,7 @@ func (c *WrapSurf) Y(line, char int) int {
 }
 
 func (c *WrapSurf) init(w, h int, b *util.Buffer, startl, starty int, tabw int) {
+	c.w, c.h = w, h
 	c.b = b
 	c.lines = PosMap{}
 	c.chars = PosMap{}
@@ -220,4 +235,3 @@ func NewTabber(line []rune, tabw int) *Tabber {
 
 	return t
 }
-

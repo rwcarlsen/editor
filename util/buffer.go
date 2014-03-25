@@ -1,17 +1,17 @@
 package util
 
 import (
-	"strings"
+	"unicode/utf8"
+	"bytes"
 )
 
 type Buffer struct {
-	data  []rune
+	data  []byte
 	lines [][]rune
 }
 
 func NewBuffer(data []byte) *Buffer {
-	s := string(data)
-	b := &Buffer{data: []rune(s)}
+	b := &Buffer{data: data}
 	b.updLines()
 	return b
 }
@@ -25,10 +25,10 @@ func (b *Buffer) Line(n int) []rune {
 }
 
 func (b *Buffer) updLines() {
-	slines := strings.SplitAfter(string(b.data), "\n")
+	slines := bytes.SplitAfter(b.data, []byte("\n"))
 	b.lines = make([][]rune, len(slines))
 	for i, l := range slines {
-		b.lines[i] = []rune(l)
+		b.lines[i] = bytes.Runes(l)
 	}
 	if len(b.lines) > 0 {
 		i := len(b.lines)-1
@@ -41,31 +41,51 @@ func (b *Buffer) updLines() {
 	}
 }
 
+// Nlines returns the total number of lines (separated by '\n') in the buffer.
 func (b *Buffer) Nlines() int {
 	return len(b.lines)
 }
 
-func (b *Buffer) Insert(offset int, rs []rune) {
-	b.data = append(b.data[:offset], append(rs, b.data[offset:]...)...)
+// Insert adds passed runes into the buffer at the given byte offset.
+func (b *Buffer) Insert(offset int, rs ...rune) {
+	bs := []byte(string(rs))
+	b.data = append(b.data[:offset], append(bs, b.data[offset:]...)...)
 	b.updLines()
 }
 
-func (b *Buffer) Delete(start, end int) {
-	b.data = append(b.data[:start], b.data[end:]...)
-	b.updLines()
-}
-
-func (b *Buffer) Pos(offset int) (line, char int) {
-	for _, r := range b.data[:offset] {
-		char++
-		if r == '\n' {
-			line++
-			char = 0
-		}
+// Delete removes nrunes characters starting at the given byte offset. If
+// nrunes is negative, offset is the exclusive upper bound of the removed
+// characters. It returns the number of bytes removed.
+func (b *Buffer) Delete(offset, nrunes int) (n int) {
+	if nrunes == 0 {
+		return 0
 	}
-	return line, char
+
+	nb := 0
+	if n > 0 {
+		for n := 0; n < nrunes; n++ {
+			_, size := utf8.DecodeRune(b.data[offset+nb:])
+			nb += size
+		}
+		b.data = append(b.data[:offset], b.data[offset+nb:]...)
+	} else {
+		for n := 0; n > nrunes; n-- {
+			_, size := utf8.DecodeLastRune(b.data[:offset+nb])
+			nb -= size
+		}
+		b.data = append(b.data[:offset+nb], b.data[offset:]...)
+	}
+	b.updLines()
+	return nb * nb / nb
 }
 
+// Pos returns the line and character index of the given byte offset.
+func (b *Buffer) Pos(offset int) (line, char int) {
+	lines := bytes.SplitAfter(b.data[:offset], []byte("\n"))
+	return len(lines)-1, utf8.RuneCount(lines[len(lines)-1])
+}
+
+// Offset returns the byte offset of the given line and char index.
 func (b *Buffer) Offset(line, char int) int {
 	offset := 0
 	for _, line := range b.lines[:line] {
@@ -75,7 +95,7 @@ func (b *Buffer) Offset(line, char int) int {
 }
 
 func (b *Buffer) Bytes() []byte {
-	return []byte(string(b.data))
+	return b.data
 }
 
 func Min(x, y int) int {

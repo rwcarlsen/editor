@@ -42,9 +42,9 @@ func (s *Session) Run() error {
 	s.View.SetTabwidth(s.Tabwidth)
 
 	for {
-		termbox.Clear(0, 0)
 		s.Draw()
 		termbox.Flush()
+		termbox.Clear(0, 0)
 
 		ev := termbox.PollEvent()
 		switch ev.Type {
@@ -93,7 +93,7 @@ func (s *Session) MovCursorY(n int) {
 
 func (s *Session) Newline() {
 	l, c := s.CursorL, s.CursorC
-	s.Buf.Insert(s.Buf.Offset(l, c), []rune{'\n'})
+	s.Buf.Insert(s.Buf.Offset(l, c), '\n')
 	s.MovCursorY(1)
 	s.CursorC = 0
 }
@@ -101,14 +101,14 @@ func (s *Session) Newline() {
 func (s *Session) Backspace() {
 	l, c := s.CursorL, s.CursorC
 	offset := s.Buf.Offset(l, c)
-	s.Buf.Delete(offset-1, offset)
+	s.Buf.Delete(offset, -1)
 	s.CursorL, s.CursorC = s.Buf.Pos(offset - 1)
 	s.MovCursorY(0) // force refresh of scroll reference
 }
 
 func (s *Session) Insert(chs ...rune) {
 	l, c := s.CursorL, s.CursorC
-	s.Buf.Insert(s.Buf.Offset(l, c), chs)
+	s.Buf.Insert(s.Buf.Offset(l, c), chs...)
 	s.CursorC += len(chs)
 }
 
@@ -121,9 +121,5 @@ func (s *Session) Draw() {
 	termbox.SetCursor(x, y)
 
 	// draw content
-	for y := 0; y < s.H; y++ {
-		for x := 0; x < s.W; x++ {
-			termbox.SetCell(x, y, surf.Rune(x, y), 0, 0)
-		}
-	}
+	view.Draw(surf, 0, 0)
 }
