@@ -42,9 +42,9 @@ func (s *Session) Run() error {
 	s.View.SetTabwidth(s.Tabwidth)
 
 	for {
-		termbox.Clear(0, 0)
 		s.Draw()
 		termbox.Flush()
+		termbox.Clear(0, 0)
 
 		ev := termbox.PollEvent()
 		switch ev.Type {

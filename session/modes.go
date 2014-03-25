@@ -64,10 +64,11 @@ type ModeSearch struct{
 
 func (m *ModeSearch) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 	if m.s == nil {
+		m.s = s
 		m.b = util.NewBuffer([]byte{})
 		m.view = &view.Wrap{}
 		m.view.SetBuf(m.b)
-		m.view.SetSize(s.W, 1)
+		m.view.SetSize(s.W-1, 1)
 		m.view.SetTabwidth(1)
 	}
 
@@ -78,12 +79,17 @@ func (m *ModeSearch) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 	switch ev.Key {
 	case termbox.KeyEnter:
 		// execute the search
+		m.b.Bytes()
 	case termbox.KeyBackspace, termbox.KeyBackspace2:
 		m.b.Delete(m.pos, -1)
 		m.pos--
 	case termbox.KeyEsc:
 		return &ModeEdit{}, nil
 	}
+
+	surf := m.view.Render()
+	termbox.SetCell(0, s.H, '/', 0, 0)
+	view.Draw(surf, 1, s.H)
 	return m, nil
 }
 
@@ -118,6 +124,9 @@ func (m *ModeEdit) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 			s.MovCursorX(-s.CursorC)
 			s.MovCursorY(s.Buf.Nlines()-1-s.CursorL)
 			s.Ypivot=s.H-1
+		case '/':
+			termbox.SetCell(0, s.H, '/', 0, 0)
+			return &ModeSearch{}, nil
 		}
 	}
 

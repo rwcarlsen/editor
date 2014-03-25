@@ -24,11 +24,11 @@ type Surface interface {
 	Size() (w, h int)
 }
 
-func Draw(s Surface, x, y int) {
+func Draw(s Surface, xorigin, yorigin int) {
 	w, h := s.Size()
 	for y := 0; y < h; y++ {
 		for x := 0; x < w; x++ {
-			termbox.SetCell(x, y, s.Rune(x, y), 0, 0)
+			termbox.SetCell(xorigin+x, yorigin+y, s.Rune(x, y), 0, 0)
 		}
 	}
 }
