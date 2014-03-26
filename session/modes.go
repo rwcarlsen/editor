@@ -152,7 +152,8 @@ func (m *ModeEdit) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 		case 'h':
 			s.SetCursor(-1, s.CursorC-1)
 		case 'x':
-			s.Delete(2)
+			s.Delete(1)
+			s.SetCursor(-1, s.CursorC+1)
 		case 'g':
 			m.prevkey = 'g'
 		case 'G':

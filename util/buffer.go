@@ -63,7 +63,7 @@ func (b *Buffer) Delete(offset, nrunes int) (n int) {
 	}
 
 	nb := 0
-	if n > 0 {
+	if nrunes > 0 {
 		for n := 0; n < nrunes; n++ {
 			_, size := utf8.DecodeRune(b.data[offset+nb:])
 			nb += size
@@ -71,11 +71,10 @@ func (b *Buffer) Delete(offset, nrunes int) (n int) {
 		b.data = append(b.data[:offset], b.data[offset+nb:]...)
 	} else {
 		for n := 0; n > nrunes; n-- {
-			_, size := utf8.DecodeLastRune(b.data[:offset+nb])
-			nb -= size
+			_, size := utf8.DecodeLastRune(b.data[:offset-nb])
+			nb += size
 		}
-		b.data = append(b.data[:offset+nb], b.data[offset:]...)
-		nb = -nb
+		b.data = append(b.data[:offset-nb], b.data[offset:]...)
 	}
 	b.updLines()
 	return nb
