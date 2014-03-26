@@ -24,6 +24,7 @@ type Session struct {
 	CursorL    int // cursor line#
 	CursorC    int // cursor char#
 	ExpandTabs bool
+	Matches [][]int // regexp search matches
 	Tabwidth   int
 	Ypivot     int
 }
@@ -92,15 +93,14 @@ func (s *Session) SetCursor(line, char int) {
 	s.CursorC = char
 }
 
-func (s *Session) Backspace() {
+func (s *Session) Delete(n int) {
 	offset := s.Buf.Offset(s.CursorL, s.CursorC)
-	n := s.Buf.Delete(offset, -1)
-	s.SetCursor(s.Buf.Pos(offset - n))
+	nb := s.Buf.Delete(offset, n)
+	s.SetCursor(s.Buf.Pos(offset - nb))
 }
 
 func (s *Session) Insert(chs ...rune) {
-	l, c := s.CursorL, s.CursorC
-	offset := s.Buf.Offset(l, c)
+	offset := s.Buf.Offset(s.CursorL, s.CursorC)
 	n := s.Buf.Insert(offset, chs...)
 	s.SetCursor(s.Buf.Pos(offset+n))
 }
