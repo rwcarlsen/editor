@@ -23,7 +23,7 @@ func (m *ModeInsert) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 
 	switch ev.Key {
 	case termbox.KeyEnter:
-		s.Newline()
+		s.Insert('\n')
 	case termbox.KeyBackspace, termbox.KeyBackspace2:
 		s.Backspace()
 	case termbox.KeySpace:
@@ -35,20 +35,20 @@ func (m *ModeInsert) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 			s.Insert('\t')
 		}
 	case termbox.KeyArrowUp:
-		s.MovCursorY(-1)
+		s.SetCursor(s.CursorL-1, -1)
 	case termbox.KeyArrowDown:
-		s.MovCursorY(1)
+		s.SetCursor(s.CursorL+1, -1)
 	case termbox.KeyArrowLeft:
-		s.MovCursorX(-1)
+		s.SetCursor(-1, s.CursorC-1)
 	case termbox.KeyArrowRight:
-		s.MovCursorX(1)
+		s.SetCursor(-1, s.CursorC+1)
 	case termbox.KeyCtrlS:
 		err := ioutil.WriteFile(s.File, s.Buf.Bytes(), 0666)
 		if err != nil {
 			return m, err
 		}
 	case termbox.KeyEsc:
-		s.MovCursorX(-1)
+		s.SetCursor(-1, s.CursorC-1)
 		return &ModeEdit{}, nil
 	case termbox.KeyCtrlQ:
 		return m, ErrQuit
@@ -101,9 +101,7 @@ func (m *ModeSearch) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 
 			}
 			offset := matches[n][0]
-			l, c := s.Buf.Pos(offset)
-			s.MovCursorY(-s.CursorL + l)
-			s.MovCursorX(-s.CursorC + c)
+			s.SetCursor(s.Buf.Pos(offset))
 		}
 		return &ModeEdit{Search: matches, SearchN: n}, nil
 	case termbox.KeySpace:
@@ -138,8 +136,7 @@ func (m *ModeEdit) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 		case 'g':
 			if m.prevkey == 'g' {
 				m.prevkey = 0
-				s.MovCursorX(-s.CursorC)
-				s.MovCursorY(-s.CursorL)
+				s.SetCursor(0, 0)
 			}
 		default:
 			m.prevkey = 0
@@ -149,25 +146,17 @@ func (m *ModeEdit) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 		case 'i':
 			return &ModeInsert{}, nil
 		case 'j':
-			s.MovCursorY(1)
+			s.SetCursor(s.CursorL+1, -1)
 		case 'k':
-			s.MovCursorY(-1)
+			s.SetCursor(s.CursorL-1, -1)
 		case 'l':
-			s.MovCursorX(1)
+			s.SetCursor(-1, s.CursorC+1)
 		case 'h':
-			s.MovCursorX(-1)
+			s.SetCursor(-1, s.CursorC-1)
 		case 'g':
-			if m.prevkey == 'g' {
-				m.prevkey = 0
-				s.MovCursorX(-s.CursorC)
-				s.MovCursorY(-s.CursorL)
-			} else {
-				m.prevkey = 'g'
-			}
+			m.prevkey = 'g'
 		case 'G':
-			s.MovCursorX(-s.CursorC)
-			s.MovCursorY(s.Buf.Nlines() - 1 - s.CursorL)
-			s.Ypivot = s.H - 1
+			s.SetCursor(s.Buf.Nlines()-1, 0)
 		case '/':
 			termbox.SetCell(0, s.H, '/', 0, 0)
 			return &ModeSearch{}, nil
@@ -178,27 +167,19 @@ func (m *ModeEdit) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 				m.SearchN = 0
 			}
 			offset := m.Search[m.SearchN][0]
-			l, c := s.Buf.Pos(offset)
-			s.MovCursorY(-s.CursorL + l)
-			s.MovCursorX(-s.CursorC + c)
+			s.SetCursor(s.Buf.Pos(offset))
 		}
 	}
 
 	switch ev.Key {
-	case termbox.KeyEnter:
-		s.MovCursorY(1)
-	case termbox.KeyBackspace, termbox.KeyBackspace2:
-		s.MovCursorX(-1)
-	case termbox.KeySpace:
-		s.MovCursorX(1)
 	case termbox.KeyArrowUp:
-		s.MovCursorY(-1)
-	case termbox.KeyArrowDown:
-		s.MovCursorY(1)
-	case termbox.KeyArrowLeft:
-		s.MovCursorX(-1)
-	case termbox.KeyArrowRight:
-		s.MovCursorX(1)
+		s.SetCursor(s.CursorL-1, -1)
+	case termbox.KeyArrowDown, termbox.KeyEnter:
+		s.SetCursor(s.CursorL+1, -1)
+	case termbox.KeyArrowLeft, termbox.KeyBackspace, termbox.KeyBackspace2:
+		s.SetCursor(-1, s.CursorC-1)
+	case termbox.KeyArrowRight, termbox.KeySpace:
+		s.SetCursor(-1, s.CursorC+1)
 	case termbox.KeyCtrlS:
 		err := ioutil.WriteFile(s.File, s.Buf.Bytes(), 0666)
 		if err != nil {

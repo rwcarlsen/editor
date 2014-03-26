@@ -63,53 +63,46 @@ func (s *Session) Run() error {
 	}
 }
 
-func (s *Session) MovCursorX(n int) {
-	line := s.Buf.Line(s.CursorL)
-	s.CursorC = util.Min(s.CursorC+n, len(line)-1)
-	s.CursorC = util.Max(s.CursorC, 0)
-}
+func (s *Session) SetCursor(line, char int) {
+	if char < 0 {
+		char = s.CursorC
+	}
+	if line < 0 {
+		line = s.CursorL
+	}
 
-func (s *Session) MovCursorY(n int) {
 	s.View.SetRef(s.CursorL, 0, 0, s.Ypivot)
 	surf := s.View.Render()
 
-	s.CursorL += n
-	if s.CursorL >= s.Buf.Nlines() {
-		s.CursorL = s.Buf.Nlines() - 1
-	} else if s.CursorL < 0 {
-		s.CursorL = 0
+	line = util.Min(line, s.Buf.Nlines()-1)
+	line = util.Max(line, 0)
+
+	l := s.Buf.Line(line)
+	char = util.Min(char, len(l)-1)
+	char = util.Max(char, 0)
+
+	if view.Contains(surf, line, char) {
+		s.Ypivot = surf.Y(line, char) // don't scroll
+	} else if line > s.CursorL {
+		s.Ypivot = s.H-1 // draw cursor at bottom & scroll
+	} else if line < s.CursorL {
+		s.Ypivot = 0 // draw cursor at top & scroll
 	}
-
-	// keep x cursor pos on text for new line
-	s.MovCursorX(0)
-
-	// if new cursor position is on prev screen render,
-	// move the cursor draw location to that screen loc
-	// (i.e. don't scroll the screen)
-	if view.Contains(surf, s.CursorL, s.CursorC) {
-		s.Ypivot = surf.Y(s.CursorL, s.CursorC)
-	}
-}
-
-func (s *Session) Newline() {
-	l, c := s.CursorL, s.CursorC
-	s.Buf.Insert(s.Buf.Offset(l, c), '\n')
-	s.MovCursorY(1)
-	s.CursorC = 0
+	s.CursorL = line
+	s.CursorC = char
 }
 
 func (s *Session) Backspace() {
-	l, c := s.CursorL, s.CursorC
-	offset := s.Buf.Offset(l, c)
-	s.Buf.Delete(offset, -1)
-	s.CursorL, s.CursorC = s.Buf.Pos(offset - 1)
-	s.MovCursorY(0) // force refresh of scroll reference
+	offset := s.Buf.Offset(s.CursorL, s.CursorC)
+	n := s.Buf.Delete(offset, -1)
+	s.SetCursor(s.Buf.Pos(offset - n))
 }
 
 func (s *Session) Insert(chs ...rune) {
 	l, c := s.CursorL, s.CursorC
-	s.Buf.Insert(s.Buf.Offset(l, c), chs...)
-	s.CursorC += len(chs)
+	offset := s.Buf.Offset(l, c)
+	n := s.Buf.Insert(offset, chs...)
+	s.SetCursor(s.Buf.Pos(offset+n))
 }
 
 func (s *Session) Draw() {

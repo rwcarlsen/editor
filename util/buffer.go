@@ -46,11 +46,12 @@ func (b *Buffer) Nlines() int {
 	return len(b.lines)
 }
 
-// Insert adds passed runes into the buffer at the given byte offset.
-func (b *Buffer) Insert(offset int, rs ...rune) {
+// Insert adds passed runes into the buffer at the given byte offset. Returns the number of bytes inserted
+func (b *Buffer) Insert(offset int, rs ...rune) (n int) {
 	bs := []byte(string(rs))
 	b.data = append(b.data[:offset], append(bs, b.data[offset:]...)...)
 	b.updLines()
+	return len(bs)
 }
 
 // Delete removes nrunes characters starting at the given byte offset. If
@@ -74,9 +75,10 @@ func (b *Buffer) Delete(offset, nrunes int) (n int) {
 			nb -= size
 		}
 		b.data = append(b.data[:offset+nb], b.data[offset:]...)
+		nb = -nb
 	}
 	b.updLines()
-	return nb * nb / nb
+	return nb
 }
 
 // Pos returns the line and character index of the given byte offset.
