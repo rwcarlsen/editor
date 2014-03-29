@@ -16,17 +16,18 @@ type Mode interface {
 }
 
 type Session struct {
-	File       string
-	mode       Mode
-	W, H       int // size of terminal window
-	Buf        *util.Buffer
-	View       view.View
-	CursorL    int // cursor line#
-	CursorC    int // cursor char#
-	ExpandTabs bool
-	Matches    [][]int // regexp search matches
-	Tabwidth   int
-	Ypivot     int
+	File        string
+	mode        Mode
+	W, H        int // size of terminal window
+	Buf         *util.Buffer
+	View        view.View
+	CursorL     int // cursor line#
+	CursorC     int // cursor char#
+	ExpandTabs  bool
+	SmartIndent bool
+	Matches     [][]int // regexp search matches
+	Tabwidth    int
+	Ypivot      int
 }
 
 func (s *Session) Run() error {

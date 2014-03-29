@@ -35,10 +35,11 @@ func main() {
 	v := &view.LineNum{View: &view.Wrap{}}
 	//v := &view.Wrap{}
 	s := &session.Session{
-		File:       flag.Arg(0),
-		View:       v,
-		ExpandTabs: false,
-		Tabwidth:   4,
+		File:        flag.Arg(0),
+		View:        v,
+		ExpandTabs:  false,
+		SmartIndent: true,
+		Tabwidth:    4,
 	}
 
 	// run ...

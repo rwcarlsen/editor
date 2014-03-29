@@ -23,7 +23,9 @@ func (m *ModeInsert) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 
 	switch ev.Key {
 	case termbox.KeyEnter:
+		space := BuildSmartIndent(s, s.CursorL)
 		s.Insert('\n')
+		s.Insert(space...)
 	case termbox.KeyBackspace, termbox.KeyBackspace2:
 		s.Delete(-1)
 	case termbox.KeySpace:
@@ -54,6 +56,22 @@ func (m *ModeInsert) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 		return m, ErrQuit
 	}
 	return m, nil
+}
+
+func BuildSmartIndent(s *Session, line int) (space []rune) {
+	if !s.SmartIndent {
+		return []rune{}
+	}
+
+	l := s.Buf.Line(line)
+	for _, ch := range l {
+		if ch == ' ' || ch == '\t' {
+			space = append(space, ch)
+		} else {
+			break
+		}
+	}
+	return space
 }
 
 type ModeSearch struct {
@@ -88,11 +106,11 @@ func (m *ModeSearch) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 			return &ModeEdit{}, nil
 		}
 
-		matches := re.FindAllIndex(s.Buf.Bytes(), -1)
-		if len(matches) > 0 {
+		s.Matches = re.FindAllIndex(s.Buf.Bytes(), -1)
+		if len(s.Matches) > 0 {
 			cursor := s.Buf.Offset(s.CursorL, s.CursorC)
 			n := 0
-			for i, match := range matches {
+			for i, match := range s.Matches {
 				offset := match[0]
 				if offset >= cursor {
 					n = i
@@ -100,7 +118,7 @@ func (m *ModeSearch) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 				}
 
 			}
-			offset := matches[n][0]
+			offset := s.Matches[n][0]
 			s.SetCursor(s.Buf.Pos(offset))
 		}
 		return &ModeEdit{}, nil
@@ -154,7 +172,9 @@ func (m *ModeEdit) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 		case 'o':
 			l := s.Buf.Line(s.CursorL)
 			s.SetCursor(-1, len(l)-1)
+			space := BuildSmartIndent(s, s.CursorL)
 			s.Insert('\n')
+			s.Insert(space...)
 			return &ModeInsert{}, nil
 		case 'x':
 			s.Delete(1)
