@@ -3,6 +3,7 @@ package session
 import (
 	"fmt"
 	"io/ioutil"
+	"regexp"
 
 	termbox "github.com/nsf/termbox-go"
 	"github.com/rwcarlsen/editor/util"
@@ -25,9 +26,17 @@ type Session struct {
 	CursorC     int // cursor char#
 	ExpandTabs  bool
 	SmartIndent bool
+	Search      *regexp.Regexp
 	Matches     [][]int // regexp search matches
 	Tabwidth    int
 	Ypivot      int
+}
+
+func (s *Session) UpdSearch() {
+	if s.Search == nil {
+		return
+	}
+	s.Matches = s.Search.FindAllIndex(s.Buf.Bytes(), -1)
 }
 
 func (s *Session) Run() error {
@@ -98,12 +107,14 @@ func (s *Session) Delete(n int) {
 	offset := s.Buf.Offset(s.CursorL, s.CursorC)
 	nb := s.Buf.Delete(offset, n)
 	s.SetCursor(s.Buf.Pos(offset - nb))
+	s.UpdSearch()
 }
 
 func (s *Session) Insert(chs ...rune) {
 	offset := s.Buf.Offset(s.CursorL, s.CursorC)
 	n := s.Buf.Insert(offset, chs...)
 	s.SetCursor(s.Buf.Pos(offset + n))
+	s.UpdSearch()
 }
 
 func (s *Session) Draw() {

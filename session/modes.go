@@ -91,13 +91,14 @@ func (m *ModeSearch) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 		m.view.SetTabwidth(1)
 	}
 
+	var err error
 	if ev.Ch != 0 {
 		m.b.Insert(m.pos, ev.Ch)
 		m.pos++
 	}
 	switch ev.Key {
 	case termbox.KeyEnter:
-		re, err := regexp.Compile(string(m.b.Bytes()))
+		s.Search, err = regexp.Compile(string(m.b.Bytes()))
 		if err != nil {
 			msg := err.Error()
 			for i, ch := range msg {
@@ -106,7 +107,7 @@ func (m *ModeSearch) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 			return &ModeEdit{}, nil
 		}
 
-		s.Matches = re.FindAllIndex(s.Buf.Bytes(), -1)
+		s.UpdSearch()
 		if len(s.Matches) > 0 {
 			cursor := s.Buf.Offset(s.CursorL, s.CursorC)
 			n := 0
