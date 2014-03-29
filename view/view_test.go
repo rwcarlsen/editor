@@ -163,16 +163,16 @@ func TestRenderLine(t *testing.T) {
 }
 
 type findstarttest struct {
-	text string
-	w, tabw int
-	startl, starty int
+	text              string
+	w, tabw           int
+	startl, starty    int
 	expectl, expectch int
 }
 
 var findstarttests = []findstarttest{
 	findstarttest{
 		text: "abc\ndef",
-		w: 4, tabw: 1,
+		w:    4, tabw: 1,
 		startl: 0, starty: 0,
 		expectl: 0, expectch: 0,
 	},

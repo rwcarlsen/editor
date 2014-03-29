@@ -76,10 +76,10 @@ type WrapSurf struct {
 	xs    PosMap // map[line#]map[char#]x
 	ys    PosMap // map[line#]map[char#]y
 	b     *util.Buffer
-	w, h int
+	w, h  int
 }
 
-func (c *WrapSurf) Size() (w, h int)      { return c.w, c.h }
+func (c *WrapSurf) Size() (w, h int) { return c.w, c.h }
 
 func (c *WrapSurf) Rune(x, y int) rune {
 	l, ch := DataPos(c, x, y)

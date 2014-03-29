@@ -151,6 +151,11 @@ func (m *ModeEdit) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 			s.SetCursor(-1, s.CursorC+1)
 		case 'h':
 			s.SetCursor(-1, s.CursorC-1)
+		case 'o':
+			l := s.Buf.Line(s.CursorL)
+			s.SetCursor(-1, len(l)-1)
+			s.Insert('\n')
+			return &ModeInsert{}, nil
 		case 'x':
 			s.Delete(1)
 			s.SetCursor(-1, s.CursorC+1)

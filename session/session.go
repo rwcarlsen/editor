@@ -24,7 +24,7 @@ type Session struct {
 	CursorL    int // cursor line#
 	CursorC    int // cursor char#
 	ExpandTabs bool
-	Matches [][]int // regexp search matches
+	Matches    [][]int // regexp search matches
 	Tabwidth   int
 	Ypivot     int
 }
@@ -85,7 +85,7 @@ func (s *Session) SetCursor(line, char int) {
 	if view.Contains(surf, line, char) {
 		s.Ypivot = surf.Y(line, char) // don't scroll
 	} else if line > s.CursorL {
-		s.Ypivot = s.H-1 // draw cursor at bottom & scroll
+		s.Ypivot = s.H - 1 // draw cursor at bottom & scroll
 	} else if line < s.CursorL {
 		s.Ypivot = 0 // draw cursor at top & scroll
 	}
@@ -102,7 +102,7 @@ func (s *Session) Delete(n int) {
 func (s *Session) Insert(chs ...rune) {
 	offset := s.Buf.Offset(s.CursorL, s.CursorC)
 	n := s.Buf.Insert(offset, chs...)
-	s.SetCursor(s.Buf.Pos(offset+n))
+	s.SetCursor(s.Buf.Pos(offset + n))
 }
 
 func (s *Session) Draw() {

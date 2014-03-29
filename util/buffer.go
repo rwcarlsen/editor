@@ -1,8 +1,8 @@
 package util
 
 import (
-	"unicode/utf8"
 	"bytes"
+	"unicode/utf8"
 )
 
 type Buffer struct {
@@ -31,7 +31,7 @@ func (b *Buffer) updLines() {
 		b.lines[i] = bytes.Runes(l)
 	}
 	if len(b.lines) > 0 {
-		i := len(b.lines)-1
+		i := len(b.lines) - 1
 		l := b.lines[i]
 		if len(l) > 0 && l[len(l)-1] != '\n' {
 			b.lines[i] = append(l, '\n')
@@ -83,7 +83,7 @@ func (b *Buffer) Delete(offset, nrunes int) (n int) {
 // Pos returns the line and character index of the given byte offset.
 func (b *Buffer) Pos(offset int) (line, char int) {
 	lines := bytes.SplitAfter(b.data[:offset], []byte("\n"))
-	return len(lines)-1, utf8.RuneCount(lines[len(lines)-1])
+	return len(lines) - 1, utf8.RuneCount(lines[len(lines)-1])
 }
 
 // Offset returns the byte offset of the given line and char index.
