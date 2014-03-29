@@ -3,10 +3,14 @@ package util
 import (
 	"bytes"
 	"unicode/utf8"
+
+	termbox "github.com/nsf/termbox-go"
 )
 
 type Buffer struct {
 	data  []byte
+	fgs   []termbox.Attribute
+	bgs   []termbox.Attribute
 	lines [][]rune
 }
 

@@ -32,13 +32,6 @@ type Session struct {
 	Ypivot      int
 }
 
-func (s *Session) UpdSearch() {
-	if s.Search == nil {
-		return
-	}
-	s.Matches = s.Search.FindAllIndex(s.Buf.Bytes(), -1)
-}
-
 func (s *Session) Run() error {
 	s.mode = &ModeEdit{}
 	data, err := ioutil.ReadFile(s.File)
@@ -127,4 +120,28 @@ func (s *Session) Draw() {
 
 	// draw content
 	view.Draw(surf, 0, 0)
+}
+
+func (s *Session) NextMatch() {
+	if len(s.Matches) > 0 {
+		cursor := s.Buf.Offset(s.CursorL, s.CursorC)
+		n := 0
+		for i, match := range s.Matches {
+			offset := match[0]
+			if offset > cursor {
+				n = i
+				break
+			}
+
+		}
+		offset := s.Matches[n][0]
+		s.SetCursor(s.Buf.Pos(offset))
+	}
+}
+
+func (s *Session) UpdSearch() {
+	if s.Search == nil {
+		return
+	}
+	s.Matches = s.Search.FindAllIndex(s.Buf.Bytes(), -1)
 }

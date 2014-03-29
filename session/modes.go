@@ -106,22 +106,8 @@ func (m *ModeSearch) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 			}
 			return &ModeEdit{}, nil
 		}
-
 		s.UpdSearch()
-		if len(s.Matches) > 0 {
-			cursor := s.Buf.Offset(s.CursorL, s.CursorC)
-			n := 0
-			for i, match := range s.Matches {
-				offset := match[0]
-				if offset >= cursor {
-					n = i
-					break
-				}
-
-			}
-			offset := s.Matches[n][0]
-			s.SetCursor(s.Buf.Pos(offset))
-		}
+		s.NextMatch()
 		return &ModeEdit{}, nil
 	case termbox.KeySpace:
 		m.b.Insert(m.pos, ' ')
@@ -188,22 +174,7 @@ func (m *ModeEdit) HandleKey(s *Session, ev termbox.Event) (Mode, error) {
 			termbox.SetCell(0, s.H, '/', 0, 0)
 			return &ModeSearch{}, nil
 		case 'n':
-			if len(s.Matches) == 0 {
-				break
-			}
-
-			cursor := s.Buf.Offset(s.CursorL, s.CursorC)
-			n := 0
-			for i, match := range s.Matches {
-				offset := match[0]
-				if offset > cursor {
-					n = i
-					break
-				}
-
-			}
-			offset := s.Matches[n][0]
-			s.SetCursor(s.Buf.Pos(offset))
+			s.NextMatch()
 		}
 	}
 
